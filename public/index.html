@@ -648,13 +648,13 @@
     <div class="divider"></div>
     <div class="dialog-row">
       <label>Room code</label>
-      <div id="shareRoomCode" style="font-family:var(--font-mono);font-size:24px;font-weight:600;color:var(--teal);padding:var(--sp-4);border-radius:var(--r-md);border:1px dashed var(--teal-border);text-align:center;background:var(--teal-bg)"></div>
+      <div id="shareRoomCode" style="font-family:var(--font-mono);font-size:24px;font-weight:600;color:var(--teal);padding:var(--sp-4);border-radius:var(--r-md);border:1px dashed var(--teal-border);text-align:center;"></div>
     </div>
     <div class="dialog-row">
       <label>Invite link</label>
       <div style="display:flex;gap:var(--sp-2);align-items:center;">
         <input id="shareUrlInput" type="text" readonly aria-label="Room invite link"
-               style="flex:1;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);border:1px solid var(--border-hi);background:var(--surface-alt);font-family:var(--font-mono);font-size:12px;color:var(--text)"/>
+               style="flex:1;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);border:1px solid var(--border-hi);background:var(--surface-alt);font-family:var(--font-mono);font-size:12px;color:var(--text);" />
         <button id="copyLinkBtn" type="button" class="action-button secondary">Copy</button>
       </div>
     </div>
@@ -671,418 +671,868 @@
 <script>
 "use strict";
 
-const STORAGE_KEY_PROFILE="planningPokerProfile";
-const $=id=>document.getElementById(id);
+// ─── Constants ─────────────────────────────────────────────────────────────
+const STORAGE_KEY_PROFILE = "planningPokerProfile";
+const TOAST_DURATION_MS = 2800;
+const MAX_ITEMS_PER_BACKLOG = 200;
+const MAX_NAME_LENGTH = 64;
+const RECONNECTION_DELAY_MS = 1000;
+const RECONNECTION_DELAY_MAX_MS = 5000;
 
-function escapeHtml(str){
-  return String(str)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-function generateRoomId(){return Math.random().toString(36).slice(2,8);}
-function setRoomInUrl(id){window.history.replaceState(null,"","#"+id);}
+// Vote card values (Fibonacci scale + special cards)
+const VOTE_CARD_VALUES = ["0", "0.5", "1", "2", "3", "5", "8", "13", "20", "40", "100", "?"];
 
-let socket=null;
-let ROOM_ID=null;
-let myName="";
-let hasJoined=false;
+// Seat positioning constants
+const SEAT_POSITIONING = {
+  small: { width: 96, layerSize: 420, orbitRadius: 190, threshold: 8 },
+  medium: { width: 72, layerSize: 460, orbitRadius: 210, threshold: 16 },
+  large: { width: 56, layerSize: 500, orbitRadius: 230, threshold: Infinity }
+};
 
-let currentState={revealed:false,votes:{}};
-let myCurrentVote=null;
-let items=[];
-let currentItemIndex=-1;
+// ─── Structured Logger ─────────────────────────────────────────────────────
+/**
+ * Frontend logger for debugging and monitoring
+ */
+const logger = {
+  debug: (msg, meta = {}) => {
+    if (window.location.hostname === "localhost") {
+      console.log(`[DEBUG] ${msg}`, meta);
+    }
+  },
+  info: (msg, meta = {}) => {
+    console.log(`[INFO] ${msg}`, meta);
+  },
+  warn: (msg, meta = {}) => {
+    console.warn(`[WARN] ${msg}`, meta);
+  },
+  error: (msg, error = null, meta = {}) => {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[ERROR] ${msg}`, { error: errorMsg, ...meta });
+  }
+};
 
-function showToast(msg,ms=2800){
-  const el=$("toast");
-  el.textContent=msg;
-  el.classList.add("show");
-  setTimeout(()=>el.classList.remove("show"),ms);
-}
-function saveProfile(name){
-  try{localStorage.setItem(STORAGE_KEY_PROFILE,JSON.stringify({name}));}catch{}
-}
-function loadProfile(){
-  try{
-    const raw=localStorage.getItem(STORAGE_KEY_PROFILE);
-    if(!raw)return null;
-    const d=JSON.parse(raw);
-    if(!d||typeof d.name!=="string")return null;
-    return d;
-  }catch{return null;}
-}
-function updateRoomDisplay(){
-  $("roomLabel").textContent=ROOM_ID?`Room: ${ROOM_ID.toUpperCase()}`:"";
-  $("roomNameDisplay").textContent=ROOM_ID?ROOM_ID.toUpperCase():"—";
-}
-function parseVoteEntry(info){
-  if(info&&typeof info==="object")return{value:info.value??""};
-  return{value:String(info??"")};
+// ─── DOM Helpers ───────────────────────────────────────────────────────────
+/**
+ * Get element by ID safely
+ * @param {string} id - Element ID
+ * @returns {HTMLElement|null} The element or null
+ */
+const $ = id => document.getElementById(id);
+
+/**
+ * Escape HTML to prevent XSS
+ * @param {*} str - String to escape
+ * @returns {string} Escaped string
+ */
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = String(str);
+  return div.innerHTML;
 }
 
-// Backlog
-function updateBacklogTiles(){
-  const backlogList=$("backlogList");
-  const itemIndexLabel=$("itemIndexLabel");
-  backlogList.innerHTML="";
-  if(!items.length){
-    backlogList.innerHTML="<div style='font-size:11px;color:var(--text-muted);font-family:var(--font-mono);'>No items loaded.</div>";
-    itemIndexLabel.textContent="";
+// ─── Room & Session Management ─────────────────────────────────────────────
+
+let socket = null;
+let ROOM_ID = null;
+let myName = "";
+let hasJoined = false;
+
+let currentState = { revealed: false, votes: {} };
+let myCurrentVote = null;
+let items = [];
+let currentItemIndex = -1;
+
+/**
+ * Generate a random room ID
+ * @returns {string} Random room code
+ */
+function generateRoomId() {
+  return Math.random().toString(36).slice(2, 8);
+}
+
+/**
+ * Update URL hash with room ID
+ * @param {string} id - Room ID to set
+ */
+function setRoomInUrl(id) {
+  window.history.replaceState(null, "", "#" + id);
+}
+
+/**
+ * Show a toast notification
+ * @param {string} msg - Message to display
+ * @param {number} ms - Duration in milliseconds
+ */
+function showToast(msg, ms = TOAST_DURATION_MS) {
+  try {
+    const el = $("toast");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), ms);
+  } catch (err) {
+    logger.error("Failed to show toast", err);
+  }
+}
+
+/**
+ * Save user profile to localStorage
+ * @param {string} name - User's name
+ */
+function saveProfile(name) {
+  try {
+    localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify({ name }));
+    logger.debug("Profile saved", { name });
+  } catch (err) {
+    logger.warn("Failed to save profile", { error: err.message });
+  }
+}
+
+/**
+ * Load user profile from localStorage
+ * @returns {Object|null} Profile object or null
+ */
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PROFILE);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data.name !== "string") return null;
+    logger.debug("Profile loaded", { name: data.name });
+    return data;
+  } catch (err) {
+    logger.warn("Failed to load profile", { error: err.message });
+    return null;
+  }
+}
+
+/**
+ * Update room display labels
+ */
+function updateRoomDisplay() {
+  const roomLabel = $("roomLabel");
+  const roomNameDisplay = $("roomNameDisplay");
+  if (roomLabel) roomLabel.textContent = ROOM_ID ? `Room: ${ROOM_ID.toUpperCase()}` : "";
+  if (roomNameDisplay) roomNameDisplay.textContent = ROOM_ID ? ROOM_ID.toUpperCase() : "—";
+}
+
+/**
+ * Parse vote entry safely
+ * @param {*} info - Vote info object
+ * @returns {Object} Vote entry with value
+ */
+function parseVoteEntry(info) {
+  if (info && typeof info === "object" && "value" in info) {
+    return { value: info.value ?? "" };
+  }
+  return { value: String(info ?? "") };
+}
+
+// ─── Backlog Management ────────────────────────────────────────────────────
+
+/**
+ * Render backlog tiles
+ */
+function updateBacklogTiles() {
+  const backlogList = $("backlogList");
+  const itemIndexLabel = $("itemIndexLabel");
+  if (!backlogList) return;
+
+  backlogList.innerHTML = "";
+  if (!items.length) {
+    backlogList.innerHTML = "<div style='font-size:11px;color:var(--text-muted);font-family:var(--font-mono);'>No items loaded.</div>";
+    if (itemIndexLabel) itemIndexLabel.textContent = "";
     return;
   }
-  const frag=document.createDocumentFragment();
-  items.forEach((text,idx)=>{
-    const wrap=document.createElement("div");
-    wrap.className="backlog-item-tile"+(idx===currentItemIndex?" current":"");
-    const card=document.createElement("div");
-    card.className="backlog-card";
-    card.setAttribute("role","button");
-    card.setAttribute("tabindex","0");
-    card.setAttribute("aria-label",`Select: ${text}`);
-    card.innerHTML=`
-      <div class="card__title">${escapeHtml(text)}</div>
-      <div class="card__date" data-base="Item ${idx+1} of ${items.length}">Item ${idx+1} of ${items.length}</div>`;
-    const activate=()=>goToItem(idx);
-    card.addEventListener("click",activate);
-    card.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")activate();});
+
+  const frag = document.createDocumentFragment();
+  items.forEach((text, idx) => {
+    const wrap = document.createElement("div");
+    wrap.className = "backlog-item-tile" + (idx === currentItemIndex ? " current" : "");
+    const card = document.createElement("div");
+    card.className = "backlog-card";
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", `Select: ${text}`);
+
+    const title = document.createElement("div");
+    title.className = "card__title";
+    title.textContent = text;
+
+    const date = document.createElement("div");
+    date.className = "card__date";
+    date.setAttribute("data-base", `Item ${idx + 1} of ${items.length}`);
+    date.textContent = `Item ${idx + 1} of ${items.length}`;
+
+    card.appendChild(title);
+    card.appendChild(date);
+
+    const activate = () => goToItem(idx);
+    card.addEventListener("click", activate);
+    card.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") activate();
+    });
+
     wrap.appendChild(card);
     frag.appendChild(wrap);
   });
-  backlogList.appendChild(frag);
-  itemIndexLabel.textContent=currentItemIndex>=0?`${currentItemIndex+1}/${items.length}`:"";
-}
-function goToItem(idx){
-  if(!items.length||idx<0||idx>=items.length)return;
-  socket?.emit("setBacklogIndex",idx);
-}
-$("loadItemsBtn").addEventListener("click",()=>{
-  const parsed=($("itemsInput").value||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,200);
-  if(!parsed.length){showToast("No items found.");return;}
-  socket?.emit("setBacklog",{items:parsed});
-  showToast(`${parsed.length} item${parsed.length>1?"s":""} loaded.`);
-});
-$("prevItemBtn").addEventListener("click",()=>goToItem(currentItemIndex-1));
-$("nextItemBtn").addEventListener("click",()=>goToItem(currentItemIndex+1));
 
-// Cards
-function renderCards(){
-  const cardsContainer=$("cardsContainer");
-  const vals=["0","0.5","1","2","3","5","8","13","20","40","100","?"];
-  cardsContainer.innerHTML="";
-  const frag=document.createDocumentFragment();
-  vals.forEach(val=>{
-    const div=document.createElement("div");
-    div.className="vote-card";
-    div.textContent=val;
-    div.dataset.value=val;
-    div.setAttribute("role","button");
-    div.setAttribute("tabindex","0");
-    div.setAttribute("aria-label",`Vote ${val}`);
-    const handler=()=>handleVote(val);
-    div.addEventListener("click",handler);
-    div.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")handler();});
+  backlogList.appendChild(frag);
+  if (itemIndexLabel) {
+    itemIndexLabel.textContent = currentItemIndex >= 0 ? `${currentItemIndex + 1}/${items.length}` : "";
+  }
+}
+
+/**
+ * Navigate to a backlog item
+ * @param {number} idx - Item index
+ */
+function goToItem(idx) {
+  if (!items.length || idx < 0 || idx >= items.length) return;
+  socket?.emit("setBacklogIndex", idx);
+}
+
+// Setup backlog event listeners
+{
+  const loadBtn = $("loadItemsBtn");
+  if (loadBtn) {
+    loadBtn.addEventListener("click", () => {
+      try {
+        const input = $("itemsInput");
+        if (!input) return;
+        const parsed = (input.value || "")
+          .split(/\r?\n/)
+          .map(s => s.trim())
+          .filter(Boolean)
+          .slice(0, MAX_ITEMS_PER_BACKLOG);
+
+        if (!parsed.length) {
+          showToast("No items found.");
+          return;
+        }
+
+        socket?.emit("setBacklog", { items: parsed });
+        showToast(`${parsed.length} item${parsed.length > 1 ? "s" : ""} loaded.`);
+        logger.info("Backlog items loaded", { count: parsed.length });
+      } catch (err) {
+        logger.error("Failed to load items", err);
+        showToast("Failed to load items");
+      }
+    });
+  }
+
+  const prevBtn = $("prevItemBtn");
+  if (prevBtn) prevBtn.addEventListener("click", () => goToItem(currentItemIndex - 1));
+
+  const nextBtn = $("nextItemBtn");
+  if (nextBtn) nextBtn.addEventListener("click", () => goToItem(currentItemIndex + 1));
+}
+
+// ─── Voting Cards ──────────────────────────────────────────────────────────
+
+/**
+ * Render voting cards
+ */
+function renderCards() {
+  const cardsContainer = $("cardsContainer");
+  if (!cardsContainer) return;
+
+  cardsContainer.innerHTML = "";
+  const frag = document.createDocumentFragment();
+
+  VOTE_CARD_VALUES.forEach(val => {
+    const div = document.createElement("div");
+    div.className = "vote-card";
+    div.textContent = val;
+    div.dataset.value = val;
+    div.setAttribute("role", "button");
+    div.setAttribute("tabindex", "0");
+    div.setAttribute("aria-label", `Vote ${val}`);
+
+    const handler = () => handleVote(val);
+    div.addEventListener("click", handler);
+    div.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") handler();
+    });
+
     frag.appendChild(div);
   });
+
   cardsContainer.appendChild(frag);
 }
-function syncCardState(){
-  document.querySelectorAll(".vote-card").forEach(card=>{
-    const sel=card.dataset.value===myCurrentVote;
-    const rev=currentState.revealed;
-    card.classList.toggle("selected",sel);
-    card.classList.toggle("disabled",rev);
+
+/**
+ * Sync vote card state with current vote
+ */
+function syncCardState() {
+  document.querySelectorAll(".vote-card").forEach(card => {
+    const isSelected = card.dataset.value === myCurrentVote;
+    const isRevealed = currentState.revealed;
+    card.classList.toggle("selected", isSelected);
+    card.classList.toggle("disabled", isRevealed);
   });
 }
 
-// Seats & participants
-function renderSeats(){
-  const seatsLayer=$("seatsLayer");
-  seatsLayer.innerHTML="";
-  const entries=Object.entries(currentState.votes||{});
-  if(!entries.length)return;
-  entries.sort(([a],[b])=>a.localeCompare(b));
-  const count=entries.length;
-  const seatWidth=count<=8?96:count<=16?72:56;
-  const layerSize=count<=8?420:count<=16?460:500;
-  const orbitR=count<=8?190:count<=16?210:230;
-  seatsLayer.style.width=layerSize+"px";
-  seatsLayer.style.height=layerSize+"px";
-  const cx=layerSize/2,cy=layerSize/2;
-  const frag=document.createDocumentFragment();
-  entries.forEach(([name,info],i)=>{
-    const{value}=parseVoteEntry(info);
-    const angle=(2*Math.PI*i)/count-Math.PI/2;
-    const seat=document.createElement("div");
-    seat.className="seat";
-    seat.style.setProperty("--seat-width",seatWidth+"px");
-    seat.style.left=(cx+orbitR*Math.cos(angle))+"px";
-    seat.style.top =(cy+orbitR*Math.sin(angle))+"px";
-    const hasVoted=Boolean(value);
-    let cls="seat-value",txt;
-    if(!currentState.revealed){
-      if(hasVoted){cls+=" voted-hidden";txt="●";}
-      else{cls+=" hidden";txt="–";}
-    }else{
-      txt=value||"–";
+// ─── Seating & Participants ────────────────────────────────────────────────
+
+/**
+ * Get seat positioning config based on participant count
+ * @param {number} count - Participant count
+ * @returns {Object} Positioning configuration
+ */
+function getSeatConfig(count) {
+  if (count <= SEAT_POSITIONING.small.threshold) return SEAT_POSITIONING.small;
+  if (count <= SEAT_POSITIONING.medium.threshold) return SEAT_POSITIONING.medium;
+  return SEAT_POSITIONING.large;
+}
+
+/**
+ * Render participant seats around table
+ */
+function renderSeats() {
+  const seatsLayer = $("seatsLayer");
+  if (!seatsLayer) return;
+
+  seatsLayer.innerHTML = "";
+  const entries = Object.entries(currentState.votes || {});
+  if (!entries.length) return;
+
+  entries.sort(([a], [b]) => a.localeCompare(b));
+  const config = getSeatConfig(entries.length);
+
+  seatsLayer.style.width = config.layerSize + "px";
+  seatsLayer.style.height = config.layerSize + "px";
+
+  const cx = config.layerSize / 2;
+  const cy = config.layerSize / 2;
+  const frag = document.createDocumentFragment();
+
+  entries.forEach(([name, info], i) => {
+    const { value } = parseVoteEntry(info);
+    const angle = (2 * Math.PI * i) / entries.length - Math.PI / 2;
+    const seat = document.createElement("div");
+    seat.className = "seat";
+    seat.style.setProperty("--seat-width", config.width + "px");
+    seat.style.left = (cx + config.orbitRadius * Math.cos(angle)) + "px";
+    seat.style.top = (cy + config.orbitRadius * Math.sin(angle)) + "px";
+
+    const hasVoted = Boolean(value);
+    let valueClass = "seat-value";
+    let valueText;
+
+    if (!currentState.revealed) {
+      valueClass += hasVoted ? " voted-hidden" : " hidden";
+      valueText = hasVoted ? "●" : "–";
+    } else {
+      valueText = value || "–";
     }
-    seat.innerHTML=`
-      <div class="seat-card">
-        <div class="seat-name">${escapeHtml(name)}</div>
-        <div class="${cls}">${escapeHtml(txt)}</div>
-      </div>`;
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "seat-name";
+    nameEl.textContent = name;
+
+    const valueEl = document.createElement("div");
+    valueEl.className = valueClass;
+    valueEl.textContent = valueText;
+
+    const card = document.createElement("div");
+    card.className = "seat-card";
+    card.appendChild(nameEl);
+    card.appendChild(valueEl);
+
+    seat.appendChild(card);
     frag.appendChild(seat);
   });
+
   seatsLayer.appendChild(frag);
 }
-function renderParticipantsTiles(){
-  const participantsList=$("participantsList");
-  participantsList.innerHTML="";
-  const entries=Object.entries(currentState.votes||{});
-  entries.sort(([a],[b])=>a.localeCompare(b));
-  if(!entries.length){
-    participantsList.innerHTML="<div style='font-size:11px;color:var(--text-muted);font-family:var(--font-mono);'>No participants yet.</div>";
+
+/**
+ * Render participants list
+ */
+function renderParticipantsTiles() {
+  const participantsList = $("participantsList");
+  if (!participantsList) return;
+
+  participantsList.innerHTML = "";
+  const entries = Object.entries(currentState.votes || {});
+  entries.sort(([a], [b]) => a.localeCompare(b));
+
+  if (!entries.length) {
+    participantsList.innerHTML = "<div style='font-size:11px;color:var(--text-muted);font-family:var(--font-mono);'>No participants yet.</div>";
     return;
   }
-  const frag=document.createDocumentFragment();
-  entries.forEach(([name,info])=>{
-    const{value}=parseVoteEntry(info);
-    let valText,valColor;
-    if(!currentState.revealed){
-      valText=value?"Voted ✓":"Waiting…";
-      valColor=value?"var(--success)":"var(--text-muted)";
-    }else{
-      valText=value||"–";
-      valColor="var(--text)";
+
+  const frag = document.createDocumentFragment();
+  entries.forEach(([name, info]) => {
+    const { value } = parseVoteEntry(info);
+    let valText, valColor;
+
+    if (!currentState.revealed) {
+      valText = value ? "Voted ✓" : "Waiting…";
+      valColor = value ? "var(--success)" : "var(--text-muted)";
+    } else {
+      valText = value || "–";
+      valColor = "var(--text)";
     }
-    const tile=document.createElement("div");
-    tile.className="participant-tile";
-    tile.innerHTML=`
-      <div class="participant-left">
-        <span class="participant-name">${escapeHtml(name)}</span>
-      </div>
-      <span class="participant-val" style="color:${valColor}">${escapeHtml(valText)}</span>`;
+
+    const tile = document.createElement("div");
+    tile.className = "participant-tile";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "participant-name";
+    nameSpan.textContent = name;
+
+    const valSpan = document.createElement("span");
+    valSpan.className = "participant-val";
+    valSpan.style.color = valColor;
+    valSpan.textContent = valText;
+
+    tile.appendChild(nameSpan);
+    tile.appendChild(valSpan);
     frag.appendChild(tile);
   });
+
   participantsList.appendChild(frag);
 }
 
-// Summary
-function updateStatusAndSummary(){
-  const entries=Object.entries(currentState.votes||{});
-  const total=entries.length;
-  const votedCount=entries.filter(([,i])=>Boolean(parseVoteEntry(i).value)).length;
-  const currentDateEl=document.querySelector(".backlog-item-tile.current .card__date");
-  if(currentDateEl){
-    const base=currentDateEl.getAttribute("data-base")||currentDateEl.textContent;
-    currentDateEl.setAttribute("data-base",base);
-    currentDateEl.textContent=base;
-  }
+// ─── Summary & Statistics ──────────────────────────────────────────────────
 
-  const statusText=$("statusText");
-  const summaryText=$("summaryText");
-  const tableAverage=$("tableAverage");
+/**
+ * Update voting summary and table average
+ */
+function updateStatusAndSummary() {
+  const entries = Object.entries(currentState.votes || {});
+  const total = entries.length;
+  const votedCount = entries.filter(([, i]) => Boolean(parseVoteEntry(i).value)).length;
 
-  if(!currentState.revealed){
-    statusText.textContent=total?`${votedCount} / ${total} voted`:"Pick a card to vote.";
-    summaryText.textContent="";
-    tableAverage.textContent="";
-    $("revealBtn").disabled=total===0;
+  const statusText = $("statusText");
+  const summaryText = $("summaryText");
+  const tableAverage = $("tableAverage");
+  const revealBtn = $("revealBtn");
+
+  if (!statusText) return;
+
+  if (!currentState.revealed) {
+    statusText.textContent = total ? `${votedCount} / ${total} voted` : "Pick a card to vote.";
+    if (summaryText) summaryText.textContent = "";
+    if (tableAverage) tableAverage.textContent = "";
+    if (revealBtn) revealBtn.disabled = total === 0;
     return;
   }
 
-  statusText.textContent=`Revealed — ${total} player${total!==1?"s":""}`;
-  const nums=entries.map(([,i])=>parseFloat(parseVoteEntry(i).value)).filter(n=>Number.isFinite(n));
-  if(nums.length){
-    const min=Math.min(...nums);
-    const max=Math.max(...nums);
-    const avg=nums.reduce((a,b)=>a+b,0)/nums.length;
-    const avgText=avg.toFixed(2);
-    summaryText.textContent=`Min ${min} · Max ${max} · Avg ${avgText}`;
-    tableAverage.textContent=avgText;
-    if(currentDateEl){
-      const base=currentDateEl.getAttribute("data-base")||currentDateEl.textContent;
-      currentDateEl.setAttribute("data-base",base);
-      currentDateEl.textContent=`${base} — Avg: ${avgText}`;
-    }
-  }else{
-    summaryText.textContent="No numeric votes.";
-    tableAverage.textContent="";
-    if(currentDateEl){
-      const base=currentDateEl.getAttribute("data-base")||currentDateEl.textContent;
-      currentDateEl.setAttribute("data-base",base);
-      currentDateEl.textContent=`${base} — No numeric votes`;
-    }
-  }
-}
+  statusText.textContent = `Revealed — ${total} player${total !== 1 ? "s" : ""}`;
 
-function renderAll(){
-  syncCardState();
-  renderSeats();
-  renderParticipantsTiles();
-  updateStatusAndSummary();
-}
+  const nums = entries
+    .map(([, i]) => parseFloat(parseVoteEntry(i).value))
+    .filter(n => Number.isFinite(n));
 
-// Actions
-function handleVote(v){
-  if(currentState.revealed)return;
-  myCurrentVote=v;
-  syncCardState();
-  socket?.emit("vote",v);
-}
-$("revealBtn").addEventListener("click",()=>socket?.emit("reveal"));
-$("resetBtn").addEventListener("click",()=>{ myCurrentVote=null; syncCardState(); socket?.emit("reset"); });
+  if (nums.length) {
+    const min = Math.min(...nums);
+    const max = Math.max(...nums);
+    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+    const avgText = avg.toFixed(2);
 
-// Socket
-function joinRoom(){
-  if(!socket||!ROOM_ID||!myName)return;
-  socket.emit("joinRoom",{roomId:ROOM_ID,name:myName});
-}
-function connectSocket(){
-  socket=io({reconnectionDelay:1000,reconnectionDelayMax:5000});
-  socket.on("connect",()=>{
-    $("statusText").textContent="Connected.";
-    if(ROOM_ID && myName){
-      joinRoom();
-    }
-  });
-  socket.on("disconnect",reason=>{
-    $("statusText").textContent=`Disconnected (${reason}). Reconnecting…`;
-  });
-  socket.on("stateUpdate",state=>{
-    currentState=state??{revealed:false,votes:{}};
-    const e=currentState.votes[myName];
-    if(!e||!parseVoteEntry(e).value)myCurrentVote=null;
-    renderAll();
-  });
-  socket.on("backlogUpdate",({items:newItems,currentIndex})=>{
-    items=Array.isArray(newItems)?newItems:[];
-    currentItemIndex=typeof currentIndex==="number"?currentIndex:-1;
-    updateBacklogTiles();
-  });
-}
+    if (summaryText) summaryText.textContent = `Min ${min} · Max ${max} · Avg ${avgText}`;
+    if (tableAverage) tableAverage.textContent = avgText;
 
-// Overlay logic
-function showChoiceScreen(){
-  $("choiceOverlay").classList.remove("hidden");
-  $("createOverlay").classList.add("hidden");
-  $("joinOverlay").classList.add("hidden");
-  $("shareOverlay").classList.add("hidden");
-}
-$("choiceCreate").addEventListener("click",()=>{
-  $("choiceOverlay").classList.add("hidden");
-  $("createOverlay").classList.remove("hidden");
-  $("createNameInput").focus();
-});
-$("choiceJoin").addEventListener("click",()=>{
-  $("choiceOverlay").classList.add("hidden");
-  $("joinOverlay").classList.remove("hidden");
-  $("joinRoomInput").focus();
-});
-$("createBackBtn").addEventListener("click",()=>{
-  $("createOverlay").classList.add("hidden");
-  showChoiceScreen();
-});
-$("joinBackBtn").addEventListener("click",()=>{
-  $("joinOverlay").classList.add("hidden");
-  showChoiceScreen();
-});
-
-$("createConfirmBtn").addEventListener("click",()=>{
-  const raw=$("createNameInput").value.trim();
-  if(!raw){
-    $("createNameError").textContent="Please enter your name.";
-    $("createNameInput").classList.add("error");
-    $("createNameInput").focus();
-    return;
-  }
-  $("createNameError").textContent="";
-  $("createNameInput").classList.remove("error");
-  ROOM_ID=generateRoomId();
-  myName=raw.slice(0,64);
-  setRoomInUrl(ROOM_ID);
-  $("nameInput").value=myName;
-  saveProfile(myName);
-  updateRoomDisplay();
-  $("createOverlay").classList.add("hidden");
-  joinRoom();
-});
-
-$("joinConfirmBtn").addEventListener("click",()=>{
-  const room=$("joinRoomInput").value.trim();
-  const name=$("joinNameInput").value.trim();
-  let ok=true;
-  if(!room){
-    $("joinRoomError").textContent="Enter room code.";
-    $("joinRoomInput").classList.add("error");
-    ok=false;
-  }else{
-    $("joinRoomError").textContent="";
-    $("joinRoomInput").classList.remove("error");
-  }
-  if(!name){
-    $("joinNameError").textContent="Enter your name.";
-    $("joinNameInput").classList.add("error");
-    ok=false;
-  }else{
-    $("joinNameError").textContent="";
-    $("joinNameInput").classList.remove("error");
-  }
-  if(!ok)return;
-  ROOM_ID=room.slice(0,64);
-  myName=name.slice(0,64);
-  setRoomInUrl(ROOM_ID);
-  $("nameInput").value=myName;
-  saveProfile(myName);
-  updateRoomDisplay();
-  $("joinOverlay").classList.add("hidden");
-  joinRoom();
-});
-
-// Share
-$("shareBtnHeader").addEventListener("click",()=>{
-  if(!ROOM_ID)return;
-  const url=window.location.origin+window.location.pathname+"#"+ROOM_ID;
-  $("shareRoomCode").textContent=ROOM_ID.toUpperCase();
-  $("shareUrlInput").value=url;
-  $("shareOverlay").classList.remove("hidden");
-});
-$("shareCloseBtn").addEventListener("click",()=>$("shareOverlay").classList.add("hidden"));
-$("copyLinkBtn").addEventListener("click",()=>{
-  $("shareUrlInput").select();
-  document.execCommand("copy");
-  showToast("Room link copied.");
-});
-
-// Init
-window.addEventListener("load",()=>{
-  // First, try to load profile and room from URL hash (for share links)
-  const urlRoom = window.location.hash.replace("#","").trim() || null;
-  const profile = loadProfile();
-
-  if (profile && profile.name.trim()) {
-    myName = profile.name.trim();
-    $("nameInput").value = myName;
-  }
-
-  if (urlRoom) {
-    ROOM_ID = urlRoom;
-    updateRoomDisplay();
-  }
-
-  renderCards();
-  updateBacklogTiles();
-  connectSocket();
-
-  if (ROOM_ID && myName) {
-    // We have both: user opened a shared link and already had a name
-    // Auto-join, do NOT show overlays
-    $("choiceOverlay").classList.add("hidden");
-    $("createOverlay").classList.add("hidden");
-    $("joinOverlay").classList.add("hidden");
-    joinRoom();
+    logger.info("Vote summary", { min, max, avg: avgText, total: nums.length });
   } else {
-    // No existing combo: show initial choice
-    showChoiceScreen();
+    if (summaryText) summaryText.textContent = "No numeric votes.";
+    if (tableAverage) tableAverage.textContent = "";
   }
+}
+
+/**
+ * Re-render all UI elements
+ */
+function renderAll() {
+  try {
+    syncCardState();
+    renderSeats();
+    renderParticipantsTiles();
+    updateStatusAndSummary();
+  } catch (err) {
+    logger.error("Failed to render UI", err);
+  }
+}
+
+// ─── Voting Actions ────────────────────────────────────────────────────────
+
+/**
+ * Handle vote submission
+ * @param {string} value - Vote value
+ */
+function handleVote(value) {
+  if (currentState.revealed) return;
+  myCurrentVote = value;
+  syncCardState();
+  socket?.emit("vote", value);
+  logger.debug("Vote submitted", { value });
+}
+
+// Setup action buttons
+{
+  const revealBtn = $("revealBtn");
+  if (revealBtn) {
+    revealBtn.addEventListener("click", () => {
+      socket?.emit("reveal");
+      logger.info("Reveal requested");
+    });
+  }
+
+  const resetBtn = $("resetBtn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      myCurrentVote = null;
+      syncCardState();
+      socket?.emit("reset");
+      logger.info("Reset requested");
+    });
+  }
+}
+
+// ─── Socket Management ─────────────────────────────────────────────────────
+
+/**
+ * Join a room via socket
+ */
+function joinRoom() {
+  if (!socket || !ROOM_ID || !myName) {
+    logger.warn("Cannot join room", { hasSocket: !!socket, hasRoom: !!ROOM_ID, hasName: !!myName });
+    return;
+  }
+  socket.emit("joinRoom", { roomId: ROOM_ID, name: myName });
+  logger.info("Joining room", { roomId: ROOM_ID, name: myName });
+}
+
+/**
+ * Initialize socket connection
+ */
+function connectSocket() {
+  try {
+    socket = io({
+      reconnectionDelay: RECONNECTION_DELAY_MS,
+      reconnectionDelayMax: RECONNECTION_DELAY_MAX_MS
+    });
+
+    socket.on("connect", () => {
+      logger.info("Socket connected");
+      const statusText = $("statusText");
+      if (statusText) statusText.textContent = "Connected.";
+      if (ROOM_ID && myName) joinRoom();
+    });
+
+    socket.on("disconnect", (reason) => {
+      logger.warn("Socket disconnected", { reason });
+      const statusText = $("statusText");
+      if (statusText) statusText.textContent = `Disconnected (${reason}). Reconnecting…`;
+    });
+
+    socket.on("stateUpdate", (state) => {
+      try {
+        currentState = state ?? { revealed: false, votes: {} };
+        const myVote = currentState.votes[myName];
+        if (!myVote || !parseVoteEntry(myVote).value) myCurrentVote = null;
+        renderAll();
+      } catch (err) {
+        logger.error("Failed to process stateUpdate", err);
+      }
+    });
+
+    socket.on("backlogUpdate", (data) => {
+      try {
+        const { items: newItems, currentIndex } = data || {};
+        items = Array.isArray(newItems) ? newItems : [];
+        currentItemIndex = typeof currentIndex === "number" ? currentIndex : -1;
+        updateBacklogTiles();
+      } catch (err) {
+        logger.error("Failed to process backlogUpdate", err);
+      }
+    });
+
+    socket.on("error", (error) => {
+      logger.error("Socket error", error);
+      showToast(`Error: ${error}`);
+    });
+
+    socket.on("serverShutdown", (msg) => {
+      logger.warn("Server shutting down", { message: msg });
+      showToast(msg);
+    });
+  } catch (err) {
+    logger.error("Failed to initialize socket", err);
+    showToast("Connection failed");
+  }
+}
+
+// ─── Dialog & Overlay Management ────────────────────────────────────────────
+
+/**
+ * Show choice screen overlay
+ */
+function showChoiceScreen() {
+  [$("choiceOverlay"), $("createOverlay"), $("joinOverlay"), $("shareOverlay")].forEach(el => {
+    if (!el) return;
+    if (el.id === "choiceOverlay") el.classList.remove("hidden");
+    else el.classList.add("hidden");
+  });
+}
+
+/**
+ * Hide all overlays
+ */
+function hideAllOverlays() {
+  [$("choiceOverlay"), $("createOverlay"), $("joinOverlay"), $("shareOverlay")].forEach(el => {
+    if (el) el.classList.add("hidden");
+  });
+}
+
+// Setup dialog buttons
+{
+  const createBtn = $("choiceCreate");
+  if (createBtn) {
+    createBtn.addEventListener("click", () => {
+      const createOverlay = $("createOverlay");
+      const choiceOverlay = $("choiceOverlay");
+      const createInput = $("createNameInput");
+      if (createOverlay) createOverlay.classList.remove("hidden");
+      if (choiceOverlay) choiceOverlay.classList.add("hidden");
+      if (createInput) createInput.focus();
+    });
+  }
+
+  const joinBtn = $("choiceJoin");
+  if (joinBtn) {
+    joinBtn.addEventListener("click", () => {
+      const joinOverlay = $("joinOverlay");
+      const choiceOverlay = $("choiceOverlay");
+      const joinInput = $("joinRoomInput");
+      if (joinOverlay) joinOverlay.classList.remove("hidden");
+      if (choiceOverlay) choiceOverlay.classList.add("hidden");
+      if (joinInput) joinInput.focus();
+    });
+  }
+
+  const createBackBtn = $("createBackBtn");
+  if (createBackBtn) {
+    createBackBtn.addEventListener("click", () => {
+      const createOverlay = $("createOverlay");
+      if (createOverlay) createOverlay.classList.add("hidden");
+      showChoiceScreen();
+    });
+  }
+
+  const joinBackBtn = $("joinBackBtn");
+  if (joinBackBtn) {
+    joinBackBtn.addEventListener("click", () => {
+      const joinOverlay = $("joinOverlay");
+      if (joinOverlay) joinOverlay.classList.add("hidden");
+      showChoiceScreen();
+    });
+  }
+}
+
+// ─── Create Room Flow ──────────────────────────────────────────────────────
+
+{
+  const confirmBtn = $("createConfirmBtn");
+  if (confirmBtn) {
+    confirmBtn.addEventListener("click", () => {
+      try {
+        const input = $("createNameInput");
+        const errorEl = $("createNameError");
+        if (!input) return;
+
+        const raw = input.value.trim();
+        if (!raw) {
+          if (errorEl) errorEl.textContent = "Please enter your name.";
+          input.classList.add("error");
+          input.focus();
+          return;
+        }
+
+        if (errorEl) errorEl.textContent = "";
+        input.classList.remove("error");
+
+        ROOM_ID = generateRoomId();
+        myName = raw.slice(0, MAX_NAME_LENGTH);
+        saveProfile(myName);
+        setRoomInUrl(ROOM_ID);
+        updateRoomDisplay();
+        hideAllOverlays();
+        renderCards();
+        joinRoom();
+
+        logger.info("Room created", { roomId: ROOM_ID, name: myName });
+      } catch (err) {
+        logger.error("Failed to create room", err);
+        showToast("Failed to create room");
+      }
+    });
+  }
+}
+
+// ─── Join Room Flow ────────────────────────────────────────────────────────
+
+{
+  const confirmBtn = $("joinConfirmBtn");
+  if (confirmBtn) {
+    confirmBtn.addEventListener("click", () => {
+      try {
+        const roomInput = $("joinRoomInput");
+        const nameInput = $("joinNameInput");
+        const roomError = $("joinRoomError");
+        const nameError = $("joinNameError");
+
+        let hasError = false;
+
+        if (!roomInput || !roomInput.value.trim()) {
+          if (roomError) roomError.textContent = "Please enter a room code.";
+          if (roomInput) {
+            roomInput.classList.add("error");
+            roomInput.focus();
+          }
+          hasError = true;
+        } else if (roomError) {
+          roomError.textContent = "";
+          if (roomInput) roomInput.classList.remove("error");
+        }
+
+        if (!nameInput || !nameInput.value.trim()) {
+          if (nameError) nameError.textContent = "Please enter your name.";
+          if (nameInput) nameInput.classList.add("error");
+          hasError = true;
+        } else if (nameError) {
+          nameError.textContent = "";
+          if (nameInput) nameInput.classList.remove("error");
+        }
+
+        if (hasError) return;
+
+        ROOM_ID = roomInput.value.trim().toLowerCase();
+        myName = nameInput.value.trim().slice(0, MAX_NAME_LENGTH);
+        saveProfile(myName);
+        setRoomInUrl(ROOM_ID);
+        updateRoomDisplay();
+        hideAllOverlays();
+        renderCards();
+        joinRoom();
+
+        logger.info("Joined room", { roomId: ROOM_ID, name: myName });
+      } catch (err) {
+        logger.error("Failed to join room", err);
+        showToast("Failed to join room");
+      }
+    });
+  }
+}
+
+// ─── Share Modal ────────────────────────────────────────────────────────────
+
+{
+  const shareBtn = $("shareBtnHeader");
+  if (shareBtn) {
+    shareBtn.addEventListener("click", () => {
+      try {
+        const shareOverlay = $("shareOverlay");
+        const shareCode = $("shareRoomCode");
+        const shareUrl = $("shareUrlInput");
+
+        if (!ROOM_ID) {
+          showToast("No room selected.");
+          return;
+        }
+
+        if (shareCode) shareCode.textContent = ROOM_ID.toUpperCase();
+        if (shareUrl) shareUrl.value = window.location.href;
+        if (shareOverlay) shareOverlay.classList.remove("hidden");
+
+        logger.info("Share modal opened", { roomId: ROOM_ID });
+      } catch (err) {
+        logger.error("Failed to open share modal", err);
+      }
+    });
+  }
+
+  const copyBtn = $("copyLinkBtn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      try {
+        const shareUrl = $("shareUrlInput");
+        if (!shareUrl || !shareUrl.value) return;
+
+        await navigator.clipboard.writeText(shareUrl.value);
+        showToast("Room link copied!");
+        logger.info("Room link copied to clipboard");
+      } catch (err) {
+        logger.error("Failed to copy link", err);
+        showToast("Failed to copy link");
+      }
+    });
+  }
+
+  const closeBtn = $("shareCloseBtn");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      const shareOverlay = $("shareOverlay");
+      if (shareOverlay) shareOverlay.classList.add("hidden");
+    });
+  }
+}
+
+// ─── App Initialization ────────────────────────────────────────────────────
+
+window.addEventListener("DOMContentLoaded", () => {
+  try {
+    logger.info("App initializing");
+
+    // Check if room ID is in URL hash
+    const hashRoom = window.location.hash.slice(1);
+    if (hashRoom) {
+      ROOM_ID = hashRoom;
+      updateRoomDisplay();
+
+      // Load saved profile or show name input
+      const profile = loadProfile();
+      if (profile && profile.name) {
+        myName = profile.name;
+        const nameInput = $("nameInput");
+        if (nameInput) nameInput.value = myName;
+        connectSocket();
+        hideAllOverlays();
+        renderCards();
+      } else {
+        // Show join dialog
+        showChoiceScreen();
+        const joinOverlay = $("joinOverlay");
+        const roomInput = $("joinRoomInput");
+        if (joinOverlay) joinOverlay.classList.remove("hidden");
+        if ($("choiceOverlay")) $("choiceOverlay").classList.add("hidden");
+        if (roomInput) {
+          roomInput.value = ROOM_ID;
+          roomInput.disabled = true;
+          const nameInput = $("joinNameInput");
+          if (nameInput) nameInput.focus();
+        }
+      }
+    } else {
+      // Show choice screen
+      showChoiceScreen();
+      connectSocket();
+    }
+
+    renderCards();
+    logger.info("App initialized");
+  } catch (err) {
+    logger.error("Failed to initialize app", err);
+    showToast("Failed to initialize app");
+  }
+});
+
+// Handle unload
+window.addEventListener("beforeunload", () => {
+  if (socket) socket.disconnect();
 });
 </script>
 </body>
