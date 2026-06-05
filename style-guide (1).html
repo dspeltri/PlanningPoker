@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title> Style Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Core tokens ── */
+    :root {
+      /* Brand */
+      --navy:         #0a1628;
+      --navy-alt:     #262836;
+      --teal:         #007585;
+      --teal-hover:   #006575;
+      --teal-light:   #29b0c3;
+      --teal-bg:      #eef6f7;
+      --teal-mid:     #e5eff0;
+      --teal-border:  #cddbde;
+
+      /* Greys */
+      --gray-01: #46535e;
+      --gray-02: #5d6d78;
+      --gray-03: #82939a;
+      --gray-04: #acc0c4;
+      --gray-05: #cddbde;
+      --gray-06: #e5eff0;
+      --gray-07: #eef6f7;
+      --gray-08: #f9fcfc;
+
+      /* Semantic */
+      --error:       #ea2238;
+      --error-bg:    #fcdcdc;
+      --warning:     #ffa600;
+      --warning-bg:  #fff6b7;
+      --success:     #12a88a;
+      --success-bg:  #c1f2e9;
+      --info:        #0055a8;
+      --info-bg:     #cceaf5;
+
+      /* Dark-UI overlays (used on navy bg) */
+      --on-dark-60: rgba(255,255,255,0.60);
+      --on-dark-50: rgba(255,255,255,0.50);
+      --on-dark-40: rgba(255,255,255,0.40);
+      --on-dark-20: rgba(255,255,255,0.20);
+      --on-dark-10: rgba(255,255,255,0.10);
+      --on-dark-05: rgba(255,255,255,0.05);
+
+      /* Module accent colours */
+      --module-portfolio: #007585;
+      --module-carrier:   #29b0c3;
+      --module-client:    #1496a8;
+      --module-market:    #0d8a9e;
+      --module-claims:    #64748b;
+
+      /* Typography */
+      --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+      /* Spacing scale */
+      --sp-1:  4px;
+      --sp-2:  8px;
+      --sp-3: 12px;
+      --sp-4: 16px;
+      --sp-5: 20px;
+      --sp-6: 24px;
+      --sp-8: 32px;
+      --sp-10: 40px;
+      --sp-12: 48px;
+      --sp-16: 64px;
+      --sp-20: 80px;
+
+      /* Radii */
+      --r-sm:   6px;
+      --r-md:   8px;
+      --r-lg:  12px;
+      --r-xl:  16px;
+      --r-2xl: 20px;
+      --r-pill: 999px;
+
+      /* Page BG for guide */
+      --page-bg: #f4f6f8;
+      --guide-text: #1a2430;
+      --guide-sub:  #5d6d78;
+      --guide-rule: #dde3e8;
+    }
+
+    html { font-family: var(--font-sans); font-size: 16px; scroll-behavior: smooth; }
+    body { background: var(--page-bg); color: var(--guide-text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+    /* ── Guide layout ── */
+    .guide-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--navy); border-bottom: 1px solid var(--on-dark-10);
+      padding: 0 32px;
+    }
+    .guide-nav-inner {
+      max-width: 1200px; margin: 0 auto;
+      height: 52px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .guide-nav-brand { color: var(--teal-light); font-size: 13px; font-weight: 700; letter-spacing: 0.05em; }
+    .guide-nav-links { display: flex; gap: 4px; }
+    .guide-nav-links a {
+      color: var(--on-dark-60); font-size: 12px; font-weight: 500;
+      padding: 4px 12px; border-radius: 6px; text-decoration: none; transition: all 0.15s;
+    }
+    .guide-nav-links a:hover { color: white; background: var(--on-dark-10); }
+
+    .guide-body { max-width: 1200px; margin: 0 auto; padding: 48px 32px 80px; }
+
+    /* Section headers */
+    .guide-section { margin-bottom: 64px; }
+    .guide-section-head {
+      display: flex; align-items: center; gap: 16px;
+      border-bottom: 2px solid var(--guide-rule); padding-bottom: 14px; margin-bottom: 32px;
+    }
+    .guide-section-num {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--teal); color: white;
+      font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .guide-section-head h2 { font-size: 20px; font-weight: 700; color: var(--guide-text); }
+    .guide-section-head p  { font-size: 13px; color: var(--guide-sub); margin-top: 2px; }
+
+    /* Sub-groups */
+    .guide-group { margin-bottom: 40px; }
+    .guide-group-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--guide-sub); margin-bottom: 16px;
+    }
+
+    /* Code chip */
+    code {
+      font-family: var(--font-mono); font-size: 11px;
+      background: #e8ecf0; border: 1px solid #d0d7de;
+      padding: 1px 6px; border-radius: 4px; color: #3b4a58;
+    }
+
+    /* ── Canvas (dark preview area) ── */
+    .canvas {
+      background: var(--navy); border-radius: var(--r-xl);
+      padding: 32px; margin-bottom: 8px;
+    }
+    .canvas-light {
+      background: var(--gray-08); border: 1px solid var(--guide-rule);
+      border-radius: var(--r-xl); padding: 32px; margin-bottom: 8px;
+    }
+
+    /* ── Colour swatches ── */
+    .swatch-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .swatch {
+      width: 80px; flex-shrink: 0;
+    }
+    .swatch-block {
+      height: 52px; border-radius: 8px; margin-bottom: 6px;
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .swatch-name  { font-size: 10px; font-weight: 600; color: var(--guide-text); }
+    .swatch-value { font-family: var(--font-mono); font-size: 10px; color: var(--guide-sub); }
+    .swatch-wide { width: 120px; }
+
+    /* ── Type scale ── */
+    .type-row {
+      display: flex; align-items: baseline; gap: 24px;
+      padding: 14px 0; border-bottom: 1px solid var(--guide-rule);
+    }
+    .type-row:last-child { border-bottom: none; }
+    .type-meta { width: 160px; flex-shrink: 0; }
+    .type-meta-name  { font-size: 12px; font-weight: 600; color: var(--guide-text); }
+    .type-meta-spec  { font-size: 10px; font-family: var(--font-mono); color: var(--guide-sub); margin-top: 2px; }
+    .type-sample { color: var(--guide-text); line-height: 1.3; }
+
+    /* ── Spacing ── */
+    .space-row {
+      display: flex; align-items: center; gap: 20px;
+      padding: 8px 0; border-bottom: 1px solid var(--guide-rule);
+    }
+    .space-row:last-child { border-bottom: none; }
+    .space-block { background: var(--teal); border-radius: 3px; height: 12px; flex-shrink: 0; }
+    .space-meta  { font-size: 12px; }
+    .space-name  { font-weight: 600; color: var(--guide-text); }
+    .space-val   { font-family: var(--font-mono); font-size: 11px; color: var(--guide-sub); margin-left: 8px; }
+
+    /* ── Radius ── */
+    .radius-row { display: flex; flex-wrap: wrap; gap: 20px; }
+    .radius-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .radius-block {
+      width: 64px; height: 64px;
+      background: var(--teal-bg); border: 2px solid var(--teal);
+    }
+    .radius-meta { text-align: center; }
+    .radius-name  { font-size: 11px; font-weight: 600; color: var(--guide-text); }
+    .radius-val   { font-family: var(--font-mono); font-size: 10px; color: var(--guide-sub); }
+
+    /* ── Elevation ── */
+    .elevation-row { display: flex; flex-wrap: wrap; gap: 24px; }
+    .elevation-item {
+      width: 120px; height: 72px; border-radius: 12px;
+      background: white; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: var(--guide-sub);
+      flex-direction: column; gap: 4px;
+    }
+    .elevation-label { font-family: var(--font-mono); font-size: 10px; }
+
+    /* ── Buttons (dark) ── */
+    .btn-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-sans); font-weight: 600; font-size: 14px;
+      border-radius: var(--r-lg); padding: 10px 20px;
+      cursor: pointer; text-decoration: none; transition: all 0.15s;
+      border: none; white-space: nowrap;
+    }
+    /* Primary */
+    .btn-primary { background: var(--teal); color: white; box-shadow: 0 4px 16px rgba(0,117,133,0.3); }
+    .btn-primary:hover { background: var(--teal-hover); }
+    /* Secondary (dark) */
+    .btn-secondary-dark { background: transparent; color: white; border: 1px solid var(--on-dark-20); }
+    .btn-secondary-dark:hover { border-color: var(--on-dark-40); background: var(--on-dark-05); }
+    /* Ghost */
+    .btn-ghost-dark { background: var(--on-dark-10); color: white; }
+    .btn-ghost-dark:hover { background: var(--on-dark-20); }
+    /* Destructive */
+    .btn-danger { background: var(--error); color: white; }
+    /* Secondary (light) */
+    .btn-secondary-light { background: transparent; color: var(--teal); border: 1px solid var(--teal-border); }
+    .btn-secondary-light:hover { background: var(--teal-bg); }
+    /* Sizes */
+    .btn-sm { font-size: 12px; padding: 6px 14px; border-radius: var(--r-md); }
+    .btn-lg { font-size: 16px; padding: 14px 28px; border-radius: var(--r-xl); }
+
+    /* ── Badges / Tags ── */
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600; padding: 3px 10px;
+      border-radius: var(--r-pill); border: 1px solid; white-space: nowrap;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+    /* Colours */
+    .badge-teal    { background: rgba(0,117,133,0.12); color: var(--teal-light); border-color: rgba(0,117,133,0.3); }
+    .badge-amber   { background: rgba(251,191,36,0.12); color: #d97706; border-color: rgba(251,191,36,0.3); }
+    .badge-violet  { background: rgba(109,40,217,0.1);  color: #7c3aed; border-color: rgba(109,40,217,0.25); }
+    .badge-red     { background: rgba(220,38,38,0.1);   color: #dc2626; border-color: rgba(220,38,38,0.25); }
+    .badge-green   { background: rgba(5,150,105,0.1);   color: #059669; border-color: rgba(5,150,105,0.25); }
+    .badge-slate   { background: rgba(100,116,139,0.12);color: #64748b; border-color: rgba(100,116,139,0.25); }
+    /* On-dark pill */
+    .badge-on-dark { background: var(--on-dark-10); color: rgba(255,255,255,0.65); border-color: var(--on-dark-20); }
+
+    /* Eyebrow label */
+    .eyebrow {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal-light);
+    }
+
+    /* ── Cards ── */
+    .card-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+
+    /* Dark card */
+    .card-dark {
+      background: var(--on-dark-05); border: 1px solid var(--on-dark-10);
+      border-radius: var(--r-xl); padding: 24px;
+      transition: background 0.15s;
+    }
+    .card-dark:hover { background: var(--on-dark-10); }
+    .card-dark-accent { border-top: 3px solid var(--teal); }
+    .card-title { font-size: 15px; font-weight: 700; color: white; margin-bottom: 6px; }
+    .card-body  { font-size: 13px; color: var(--on-dark-60); line-height: 1.65; }
+
+    /* Light card */
+    .card-light {
+      background: white; border: 1px solid var(--guide-rule);
+      border-radius: var(--r-xl); padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .card-light-accent { border-top: 3px solid var(--teal); }
+    .card-title-dark { font-size: 15px; font-weight: 700; color: var(--guide-text); margin-bottom: 6px; }
+    .card-body-dark  { font-size: 13px; color: var(--guide-sub); line-height: 1.65; }
+
+    /* Icon box */
+    .icon-box {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 14px;
+    }
+
+    /* ── Module section cards ── */
+    .module-card {
+      padding: 14px 10px; border-radius: 10px;
+      text-align: center; font-weight: 700; font-size: 13px;
+      color: white; white-space: pre-line; line-height: 1.3;
+    }
+    .module-child {
+      padding: 8px 10px; font-size: 11px; font-weight: 500;
+      color: #374151; background: #f8fafc;
+      border-radius: 0 6px 6px 0;
+    }
+
+    /* ── Form elements ── */
+    .form-demo { display: flex; flex-direction: column; gap: 16px; max-width: 380px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.55); }
+    .form-input {
+      background: var(--on-dark-05); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: var(--r-md); padding: 8px 12px;
+      font-size: 13px; color: white; font-family: var(--font-sans); outline: none;
+      transition: border-color 0.15s; width: 100%;
+    }
+    .form-input::placeholder { color: rgba(255,255,255,0.25); }
+    .form-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(0,117,133,0.2); }
+    .form-label-light { font-size: 11px; font-weight: 600; color: var(--guide-sub); }
+    .form-input-light {
+      background: white; border: 1px solid var(--guide-rule);
+      border-radius: var(--r-md); padding: 8px 12px;
+      font-size: 13px; color: var(--guide-text); font-family: var(--font-sans); outline: none;
+      transition: border-color 0.15s; width: 100%;
+    }
+    .form-input-light:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(0,117,133,0.15); }
+
+    /* ── Status banners ── */
+    .status-row { display: flex; flex-direction: column; gap: 8px; }
+    .status-banner {
+      border-radius: var(--r-lg); padding: 12px 16px;
+      font-size: 13px; font-weight: 500;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .status-icon { font-size: 16px; flex-shrink: 0; line-height: 1.3; }
+    .status-success { background: var(--success-bg); border: 1px solid rgba(18,168,138,0.3); color: #065f46; }
+    .status-warning { background: var(--warning-bg); border: 1px solid rgba(255,166,0,0.3);  color: #92400e; }
+    .status-error   { background: var(--error-bg);   border: 1px solid rgba(234,34,56,0.3);   color: #991b1b; }
+    .status-info    { background: var(--info-bg);    border: 1px solid rgba(0,85,168,0.3);    color: #1e3a8a; }
+
+    /* ── Nav example ── */
+    .nav-example {
+      background: var(--navy); border-radius: var(--r-xl); overflow: hidden;
+    }
+    .nav-ex-inner {
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--on-dark-10);
+    }
+    .nav-ex-brand { display: flex; align-items: center; gap: 10px; }
+    .nav-ex-name { color: white; font-weight: 700; font-size: 18px; }
+    .nav-ex-div  { width: 1px; height: 18px; background: var(--on-dark-20); }
+    .nav-ex-prod { color: var(--teal-light); font-weight: 600; font-size: 13px; }
+    .nav-ex-tabs { display: flex; gap: 4px; }
+    .nav-ex-tab  { padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; font-family: var(--font-sans); }
+    .nav-ex-tab-active   { background: var(--teal); color: white; }
+    .nav-ex-tab-inactive { background: transparent; color: var(--on-dark-60); }
+
+    /* ── Stats strip ── */
+    .stats-strip {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      background: var(--on-dark-05); border-top: 1px solid var(--on-dark-10);
+      border-bottom: 1px solid var(--on-dark-10);
+      padding: 20px 24px; gap: 16px; text-align: center;
+    }
+    .stat-val   { font-size: 22px; font-weight: 700; color: var(--teal-light); }
+    .stat-label { font-size: 11px; color: var(--on-dark-50); margin-top: 2px; }
+
+    /* ── Workflow step ── */
+    .wf-row { display: grid; grid-template-columns: repeat(3, 1fr); border-radius: var(--r-xl); overflow: hidden; }
+    .wf-step { padding: 20px; display: flex; flex-direction: column; }
+    .wf-num   { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.6; margin-bottom: 6px; }
+    .wf-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .wf-desc  { font-size: 11px; line-height: 1.5; flex: 1; margin-bottom: 12px; }
+    .wf-tag   { font-size: 9px; font-weight: 600; padding: 3px 6px; border-radius: 4px; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.25); display: inline-block; margin-top: 4px; }
+
+    /* ── Section heading ── */
+    .section-heading-demo { margin-bottom: 8px; }
+    .section-heading-demo h2 { font-size: 28px; font-weight: 700; color: white; margin-bottom: 10px; }
+    .section-rule { width: 48px; height: 4px; background: var(--teal); border-radius: 2px; }
+    .section-sub  { font-size: 13px; color: var(--on-dark-50); margin-top: 12px; }
+
+    /* ── Hero excerpt ── */
+    .hero-demo {
+      background: linear-gradient(135deg, var(--navy) 0%, #0d2233 60%, #1a1c2e 100%);
+      border-radius: var(--r-xl); padding: 40px 32px; text-align: center; position: relative; overflow: hidden;
+    }
+    .hero-demo-glow {
+      position: absolute; top: -80px; right: -80px; width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(0,117,133,0.1), transparent 70%);
+      border-radius: 50%; pointer-events: none;
+    }
+    .hero-demo h1 { font-size: 32px; font-weight: 800; line-height: 1.2; letter-spacing: -0.03em; color: white; margin: 16px 0; }
+    .hero-demo p  { font-size: 15px; color: var(--on-dark-60); max-width: 520px; margin: 0 auto 24px; line-height: 1.7; }
+
+    /* ── Detail panel ── */
+    .detail-panel-demo { border: 1px solid var(--on-dark-10); border-radius: var(--r-xl); overflow: hidden; background: rgba(26,28,46,0.97); }
+    .detail-panel-header { background: var(--teal); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .detail-panel-header h3 { color: white; font-size: 14px; font-weight: 700; }
+    .detail-panel-body { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .detail-col { padding: 16px; border-right: 1px solid var(--on-dark-10); }
+    .detail-col:last-child { border-right: none; }
+    .detail-col-label { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+    .detail-col p { font-size: 11px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+
+    /* ── Tokens table ── */
+    .token-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .token-table th {
+      text-align: left; padding: 8px 12px;
+      background: #edf0f3; color: var(--guide-sub); font-weight: 600;
+      font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+      border-bottom: 1px solid var(--guide-rule);
+    }
+    .token-table td { padding: 8px 12px; border-bottom: 1px solid var(--guide-rule); vertical-align: middle; }
+    .token-table tr:last-child td { border-bottom: none; }
+    .token-table tr:hover td { background: #f8f9fa; }
+    .token-swatch {
+      width: 24px; height: 24px; border-radius: 5px;
+      display: inline-block; border: 1px solid rgba(0,0,0,0.1); vertical-align: middle;
+    }
+
+    /* ── Rule box (guidelines) ── */
+    .rule-box {
+      border-radius: var(--r-lg); padding: 16px 20px;
+      font-size: 13px; line-height: 1.65; display: flex; gap: 12px;
+      margin-bottom: 10px;
+    }
+    .rule-do   { background: rgba(18,168,138,0.08); border: 1px solid rgba(18,168,138,0.2); color: #065f46; }
+    .rule-dont { background: rgba(234,34,56,0.06);  border: 1px solid rgba(234,34,56,0.2);  color: #991b1b; }
+    .rule-note { background: rgba(0,117,133,0.06);  border: 1px solid rgba(0,117,133,0.2);  color: #1e3a5f; }
+    .rule-icon { font-size: 16px; flex-shrink: 0; }
+    .rule-box strong { display: block; font-weight: 700; margin-bottom: 4px; }
+
+    /* ── Responsive ── */
+    @media(max-width: 768px) {
+      .guide-body { padding: 32px 16px 60px; }
+      .stats-strip { grid-template-columns: repeat(2, 1fr); }
+      .detail-panel-body { grid-template-columns: 1fr; }
+      .wf-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="guide-nav">
+  <div class="guide-nav-inner">
+    <span class="guide-nav-brand">CRS Global Analytics Hub · Style Guide</span>
+    <div class="guide-nav-links">
+      <a href="#colours">Colours</a>
+      <a href="#typography">Type</a>
+      <a href="#spacing">Spacing</a>
+      <a href="#components">Components</a>
+      <a href="#patterns">Patterns</a>
+      <a href="#usage">Usage</a>
+    </div>
+  </div>
+</nav>
+
+<div class="guide-body">
+
+  <!-- Hero intro -->
+  <div style="margin-bottom:56px">
+    <p style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--teal);margin-bottom:8px">Internal · Version 1.0 · May 2026</p>
+    <h1 style="font-size:36px;font-weight:800;letter-spacing:-0.03em;color:var(--guide-text);margin-bottom:12px">Design System &amp; Style Guide</h1>
+    <p style="font-size:16px;color:var(--guide-sub);max-width:640px;line-height:1.7">
+      Design tokens, components, and patterns for all CRS Global Analytics Hub surfaces. Use this as the
+      single reference for colour, typography, layout, and interactive component behaviour.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════ 1. COLOURS ══ -->
+  <section class="guide-section" id="colours">
+    <div class="guide-section-head">
+      <div class="guide-section-num">01</div>
+      <div>
+        <h2>Colour</h2>
+        <p>Aon brand palette with semantic and UI overlay tokens</p>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Brand — Primary</p>
+      <div class="swatch-row">
+        <div class="swatch swatch-wide">
+          <div class="swatch-block" style="background:#0a1628"></div>
+          <p class="swatch-name">Navy (Hub dark)</p>
+          <p class="swatch-value">#0a1628</p>
+        </div>
+        <div class="swatch swatch-wide">
+          <div class="swatch-block" style="background:#262836"></div>
+          <p class="swatch-name">Navy (app shell)</p>
+          <p class="swatch-value">#262836</p>
+        </div>
+        <div class="swatch swatch-wide">
+          <div class="swatch-block" style="background:#007585"></div>
+          <p class="swatch-name">Teal</p>
+          <p class="swatch-value">#007585</p>
+        </div>
+        <div class="swatch swatch-wide">
+          <div class="swatch-block" style="background:#006575"></div>
+          <p class="swatch-name">Teal hover</p>
+          <p class="swatch-value">#006575</p>
+        </div>
+        <div class="swatch swatch-wide">
+          <div class="swatch-block" style="background:#29b0c3"></div>
+          <p class="swatch-name">Teal Light</p>
+          <p class="swatch-value">#29b0c3</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Brand — Light Surface</p>
+      <div class="swatch-row">
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#eef6f7;border:1px solid #dde3e8"></div><p class="swatch-name">Teal BG</p><p class="swatch-value">#eef6f7</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#e5eff0;border:1px solid #dde3e8"></div><p class="swatch-name">Teal Mid</p><p class="swatch-value">#e5eff0</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#cddbde;border:1px solid #dde3e8"></div><p class="swatch-name">Teal Border</p><p class="swatch-value">#cddbde</p></div>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Greyscale</p>
+      <div class="swatch-row">
+        <div class="swatch"><div class="swatch-block" style="background:#46535e"></div><p class="swatch-name">Gray 01</p><p class="swatch-value">#46535e</p></div>
+        <div class="swatch"><div class="swatch-block" style="background:#5d6d78"></div><p class="swatch-name">Gray 02</p><p class="swatch-value">#5d6d78</p></div>
+        <div class="swatch"><div class="swatch-block" style="background:#82939a"></div><p class="swatch-name">Gray 03</p><p class="swatch-value">#82939a</p></div>
+        <div class="swatch"><div class="swatch-block" style="background:#acc0c4"></div><p class="swatch-name">Gray 04</p><p class="swatch-value">#acc0c4</p></div>
+        <div class="swatch"><div class="swatch-block" style="background:#cddbde;border:1px solid #e0e7ea"></div><p class="swatch-name">Gray 05</p><p class="swatch-value">#cddbde</p></div>
+        <div class="swatch"><div class="swatch-block" style="background:#e5eff0;border:1px solid #e0e7ea"></div><p class="swatch-name">Gray 06</p><p class="swatch-value">#e5eff0</p></div>
+        <div class="swatch"><div class="swatch-block" style="background:#eef6f7;border:1px solid #e0e7ea"></div><p class="swatch-name">Gray 07</p><p class="swatch-value">#eef6f7</p></div>
+        <div class="swatch"><div class="swatch-block" style="background:#f9fcfc;border:1px solid #e0e7ea"></div><p class="swatch-name">Gray 08</p><p class="swatch-value">#f9fcfc</p></div>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Semantic</p>
+      <div class="swatch-row">
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#ea2238"></div><p class="swatch-name">Error</p><p class="swatch-value">#ea2238</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#fcdcdc;border:1px solid #e0c0c0"></div><p class="swatch-name">Error BG</p><p class="swatch-value">#fcdcdc</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#ffa600"></div><p class="swatch-name">Warning</p><p class="swatch-value">#ffa600</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#fff6b7;border:1px solid #e0d8a0"></div><p class="swatch-name">Warning BG</p><p class="swatch-value">#fff6b7</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#12a88a"></div><p class="swatch-name">Success</p><p class="swatch-value">#12a88a</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#c1f2e9;border:1px solid #a0dcd0"></div><p class="swatch-name">Success BG</p><p class="swatch-value">#c1f2e9</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#0055a8"></div><p class="swatch-name">Info</p><p class="swatch-value">#0055a8</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#cceaf5;border:1px solid #a0cce0"></div><p class="swatch-name">Info BG</p><p class="swatch-value">#cceaf5</p></div>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Module Accents</p>
+      <div class="swatch-row">
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#007585"></div><p class="swatch-name">Portfolio</p><p class="swatch-value">#007585</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#29b0c3"></div><p class="swatch-name">Carrier</p><p class="swatch-value">#29b0c3</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#1496a8"></div><p class="swatch-name">Client</p><p class="swatch-value">#1496a8</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#0d8a9e"></div><p class="swatch-name">Market</p><p class="swatch-value">#0d8a9e</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#64748b"></div><p class="swatch-name">Claims</p><p class="swatch-value">#64748b</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#4338ca"></div><p class="swatch-name">Client sub</p><p class="swatch-value">#4338ca</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#dc2626"></div><p class="swatch-name">Risk / Alert</p><p class="swatch-value">#dc2626</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#7c3aed"></div><p class="swatch-name">Emerging</p><p class="swatch-value">#7c3aed</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#d97706"></div><p class="swatch-name">Market sub</p><p class="swatch-value">#d97706</p></div>
+        <div class="swatch swatch-wide"><div class="swatch-block" style="background:#059669"></div><p class="swatch-name">Claims sub</p><p class="swatch-value">#059669</p></div>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Dark-UI Overlays (white on navy)</p>
+      <div class="canvas" style="padding:20px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div style="width:100px;height:48px;border-radius:8px;background:rgba(255,255,255,0.60);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0a1628">/60</div>
+          <div style="width:100px;height:48px;border-radius:8px;background:rgba(255,255,255,0.50);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0a1628">/50</div>
+          <div style="width:100px;height:48px;border-radius:8px;background:rgba(255,255,255,0.40);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white">/40</div>
+          <div style="width:100px;height:48px;border-radius:8px;background:rgba(255,255,255,0.20);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white">/20</div>
+          <div style="width:100px;height:48px;border-radius:8px;background:rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white">/10</div>
+          <div style="width:100px;height:48px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white">/05</div>
+        </div>
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:12px">⚠ Never use alpha below 0.07 for visible fills — html2canvas will drop them to invisible during PPT export.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════ 2. TYPOGRAPHY ══ -->
+  <section class="guide-section" id="typography">
+    <div class="guide-section-head">
+      <div class="guide-section-num">02</div>
+      <div>
+        <h2>Typography</h2>
+        <p>Inter (sans-serif) for all UI · JetBrains Mono for code / data</p>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Type Scale</p>
+      <div style="background:white;border:1px solid var(--guide-rule);border-radius:var(--r-xl);padding:24px">
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Display</p><p class="type-meta-spec">54px / 800 / -0.03em</p></div>
+          <p class="type-sample" style="font-size:54px;font-weight:800;letter-spacing:-0.03em">Analytics Hub</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Heading 1</p><p class="type-meta-spec">36px / 800 / -0.03em</p></div>
+          <p class="type-sample" style="font-size:36px;font-weight:800;letter-spacing:-0.03em">CRS Global Hub</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Heading 2</p><p class="type-meta-spec">28px / 700 / -0.02em</p></div>
+          <p class="type-sample" style="font-size:28px;font-weight:700;letter-spacing:-0.02em">Core Capabilities</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Heading 3</p><p class="type-meta-spec">22px / 700 / -0.01em</p></div>
+          <p class="type-sample" style="font-size:22px;font-weight:700;letter-spacing:-0.01em">Carrier Intelligence</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Heading 4</p><p class="type-meta-spec">18px / 700</p></div>
+          <p class="type-sample" style="font-size:18px;font-weight:700">Market Insights &amp; Trends</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Body Large</p><p class="type-meta-spec">16px / 400 / lh 1.75</p></div>
+          <p class="type-sample" style="font-size:16px;line-height:1.75">The Hub provides key global insights for renewals, RFPs, and carrier discussions in one place.</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Body</p><p class="type-meta-spec">14px / 400 / lh 1.65</p></div>
+          <p class="type-sample" style="font-size:14px;line-height:1.65">A carrier-centric view designed to improve trading conversations and placement strategy.</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Body Small</p><p class="type-meta-spec">13px / 400 / lh 1.6</p></div>
+          <p class="type-sample" style="font-size:13px;line-height:1.6">Access a unified view of client coverage, engagement, risk insights and market context.</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Caption</p><p class="type-meta-spec">12px / 400</p></div>
+          <p class="type-sample" style="font-size:12px">Data sources: Global | Aon Policy Data, Voice for the Client</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Label / UI</p><p class="type-meta-spec">11px / 600</p></div>
+          <p class="type-sample" style="font-size:11px;font-weight:600">Work email · Portfolio · Carrier</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Eyebrow</p><p class="type-meta-spec">10px / 700 / +0.1em / CAPS</p></div>
+          <p class="type-sample" style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--teal)">Commercial Risk Solutions</p>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><p class="type-meta-name">Mono / Data</p><p class="type-meta-spec">JetBrains Mono 12px</p></div>
+          <p class="type-sample" style="font-family:'JetBrains Mono',monospace;font-size:12px">#007585 · 1280 × 720 · scale: 1</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Text colours on dark</p>
+      <div class="canvas">
+        <p style="font-size:16px;font-weight:700;color:white;margin-bottom:6px">Primary — white (100%)</p>
+        <p style="font-size:15px;color:rgba(255,255,255,0.75);margin-bottom:6px">Secondary — /75 for headings on coloured backgrounds</p>
+        <p style="font-size:14px;color:rgba(255,255,255,0.60);margin-bottom:6px">Body — /60 for paragraph text on navy</p>
+        <p style="font-size:13px;color:rgba(255,255,255,0.50);margin-bottom:6px">Dim — /50 for supporting copy, card descriptions</p>
+        <p style="font-size:12px;color:rgba(255,255,255,0.40);margin-bottom:6px">Muted — /40 for timestamps, metadata</p>
+        <p style="font-size:12px;color:var(--teal-light)">Accent — teal-light (#29b0c3) for data callouts, stats, eyebrows</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════ 3. SPACING & LAYOUT ══ -->
+  <section class="guide-section" id="spacing">
+    <div class="guide-section-head">
+      <div class="guide-section-num">03</div>
+      <div>
+        <h2>Spacing &amp; Layout</h2>
+        <p>4px base unit · max-width 1280px · 24px page gutters</p>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:40px">
+      <div>
+        <p class="guide-group-label" style="margin-bottom:16px">Spacing Scale</p>
+        <div style="background:white;border:1px solid var(--guide-rule);border-radius:var(--r-xl);padding:20px">
+          <div class="space-row"><div class="space-block" style="width:4px"></div><span class="space-name">sp-1</span><span class="space-val">4px</span></div>
+          <div class="space-row"><div class="space-block" style="width:8px"></div><span class="space-name">sp-2</span><span class="space-val">8px</span></div>
+          <div class="space-row"><div class="space-block" style="width:12px"></div><span class="space-name">sp-3</span><span class="space-val">12px — tag / chip padding</span></div>
+          <div class="space-row"><div class="space-block" style="width:16px"></div><span class="space-name">sp-4</span><span class="space-val">16px — card inner / gap</span></div>
+          <div class="space-row"><div class="space-block" style="width:20px"></div><span class="space-name">sp-5</span><span class="space-val">20px</span></div>
+          <div class="space-row"><div class="space-block" style="width:24px"></div><span class="space-name">sp-6</span><span class="space-val">24px — card padding / column gap</span></div>
+          <div class="space-row"><div class="space-block" style="width:32px"></div><span class="space-name">sp-8</span><span class="space-val">32px — section row gap</span></div>
+          <div class="space-row"><div class="space-block" style="width:48px"></div><span class="space-name">sp-12</span><span class="space-val">48px — section heading bottom</span></div>
+          <div class="space-row"><div class="space-block" style="width:80px"></div><span class="space-name">sp-20</span><span class="space-val">80px — section vertical padding</span></div>
+        </div>
+      </div>
+
+      <div>
+        <p class="guide-group-label" style="margin-bottom:16px">Border Radius</p>
+        <div style="background:white;border:1px solid var(--guide-rule);border-radius:var(--r-xl);padding:24px">
+          <div class="radius-row">
+            <div class="radius-item"><div class="radius-block" style="border-radius:6px"></div><div class="radius-meta"><p class="radius-name">sm</p><p class="radius-val">6px — tags, chips</p></div></div>
+            <div class="radius-item"><div class="radius-block" style="border-radius:8px"></div><div class="radius-meta"><p class="radius-name">md</p><p class="radius-val">8px — inputs, nav tabs</p></div></div>
+            <div class="radius-item"><div class="radius-block" style="border-radius:12px"></div><div class="radius-meta"><p class="radius-name">lg</p><p class="radius-val">12px — buttons, small cards</p></div></div>
+            <div class="radius-item"><div class="radius-block" style="border-radius:16px"></div><div class="radius-meta"><p class="radius-name">xl</p><p class="radius-val">16px — main cards</p></div></div>
+            <div class="radius-item"><div class="radius-block" style="border-radius:20px"></div><div class="radius-meta"><p class="radius-name">2xl</p><p class="radius-val">20px — hero / large panels</p></div></div>
+            <div class="radius-item"><div class="radius-block" style="border-radius:999px;width:48px;height:48px"></div><div class="radius-meta"><p class="radius-name">pill</p><p class="radius-val">999px — badges</p></div></div>
+          </div>
+        </div>
+
+        <p class="guide-group-label" style="margin-bottom:16px;margin-top:24px">Elevation</p>
+        <div style="background:var(--gray-06);border-radius:var(--r-xl);padding:20px;display:flex;gap:16px;flex-wrap:wrap">
+          <div class="elevation-item" style="box-shadow:none;border:1px solid var(--guide-rule)"><span>Flat</span><span class="elevation-label">no shadow</span></div>
+          <div class="elevation-item" style="box-shadow:0 1px 4px rgba(0,0,0,0.06)"><span>Low</span><span class="elevation-label">0 1px 4px /06</span></div>
+          <div class="elevation-item" style="box-shadow:0 4px 16px rgba(0,0,0,0.1)"><span>Mid</span><span class="elevation-label">0 4px 16px /10</span></div>
+          <div class="elevation-item" style="box-shadow:0 8px 32px rgba(0,0,0,0.15)"><span>High</span><span class="elevation-label">0 8px 32px /15</span></div>
+          <div class="elevation-item" style="box-shadow:0 4px 16px rgba(0,117,133,0.30)"><span>Teal</span><span class="elevation-label">teal glow</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Layout Grid</p>
+      <div class="rule-box rule-note"><span class="rule-icon">ℹ</span><div><strong>Page container</strong>max-width: 1280px · margin: 0 auto · horizontal padding: 24px. Nav height: 56px sticky.</div></div>
+      <div class="rule-box rule-note"><span class="rule-icon">ℹ</span><div><strong>Section padding</strong>py-20 = 80px top/bottom for full sections. pt-0 when sections stack (e.g. About → Workflow).</div></div>
+      <div class="rule-box rule-note"><span class="rule-icon">ℹ</span><div><strong>Responsive columns</strong>1 col (mobile) → 2 col (sm: 640px) → 3 col (lg: 1024px) · 5 col for workflow / site-map grids on ≥640px.</div></div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════ 4. COMPONENTS ══ -->
+  <section class="guide-section" id="components">
+    <div class="guide-section-head">
+      <div class="guide-section-num">04</div>
+      <div>
+        <h2>Components</h2>
+        <p>Buttons, badges, cards, forms, banners, and navigation</p>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="guide-group">
+      <p class="guide-group-label">Buttons — on dark</p>
+      <div class="canvas">
+        <div class="btn-row" style="margin-bottom:16px">
+          <button class="btn btn-primary">Primary</button>
+          <button class="btn btn-secondary-dark">Secondary</button>
+          <button class="btn btn-ghost-dark">Ghost</button>
+          <button class="btn btn-danger">Destructive</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm">Small</button>
+          <button class="btn btn-primary">Default</button>
+          <button class="btn btn-primary btn-lg">Large</button>
+        </div>
+      </div>
+      <div class="canvas-light" style="margin-top:8px">
+        <div class="btn-row">
+          <button class="btn btn-primary">Primary</button>
+          <button class="btn btn-secondary-light" style="background:transparent;color:var(--teal);border:1px solid var(--teal-border);border-radius:var(--r-lg);padding:10px 20px;font-weight:600;font-size:14px;cursor:pointer;font-family:var(--font-sans)">Secondary</button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        Primary → <code>background: #007585</code> · hover → <code>#006575</code> · shadow: <code>0 4px 16px rgba(0,117,133,0.3)</code>
+      </p>
+    </div>
+
+    <!-- Badges -->
+    <div class="guide-group">
+      <p class="guide-group-label">Badges &amp; Tags</p>
+      <div style="background:white;border:1px solid var(--guide-rule);border-radius:var(--r-xl);padding:24px;margin-bottom:8px">
+        <div class="badge-row" style="margin-bottom:12px">
+          <span class="badge badge-teal"><span class="badge-dot" style="background:var(--teal-light)"></span>Portfolio</span>
+          <span class="badge badge-green">Carrier</span>
+          <span class="badge badge-violet">Client</span>
+          <span class="badge badge-amber">Market</span>
+          <span class="badge badge-red">Risk</span>
+          <span class="badge badge-slate">Claims</span>
+        </div>
+        <div class="badge-row">
+          <span class="eyebrow" style="color:var(--teal)">Commercial Risk Solutions</span>
+          <span style="font-size:12px;color:var(--guide-sub);margin-left:12px">← Eyebrow / section label</span>
+        </div>
+      </div>
+      <div class="canvas">
+        <div class="badge-row">
+          <span class="badge badge-teal"><span class="badge-dot" style="background:var(--teal-light)"></span>Active</span>
+          <span class="badge badge-on-dark">Portfolio</span>
+          <span class="badge badge-on-dark">Carrier</span>
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--teal-light)">Eyebrow on dark</span>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        Badge anatomy: <code>background: color/12%</code> · <code>color</code> · <code>border: 1px solid color/30%</code> · <code>border-radius: 999px</code> · <code>font-size: 11px</code> · <code>font-weight: 600</code>
+      </p>
+    </div>
+
+    <!-- Cards -->
+    <div class="guide-group">
+      <p class="guide-group-label">Cards — dark surface</p>
+      <div class="canvas">
+        <div class="card-row">
+          <div class="card-dark card-dark-accent">
+            <div class="icon-box" style="background:rgba(0,117,133,0.18)">📊</div>
+            <p class="card-title">Aon Portfolio &amp; Leadership Analytics</p>
+            <p class="card-body">View portfolio performance across regions, products, industries and carriers.</p>
+          </div>
+          <div class="card-dark" style="border-top:3px solid #4338ca">
+            <div class="icon-box" style="background:rgba(67,56,202,0.18)">🔍</div>
+            <p class="card-title">Peer Placement Comparison</p>
+            <p class="card-body">Benchmark programme structure against relevant peers across industry, region and product.</p>
+          </div>
+          <div class="card-dark" style="border-top:3px solid #dc2626">
+            <div class="icon-box" style="background:rgba(220,38,38,0.15)">⚠️</div>
+            <p class="card-title">Risk Intelligence (GRMS)</p>
+            <p class="card-body">Compare perceived and emerging risks across clients and industries.</p>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        Dark card: <code>background: rgba(255,255,255,0.05)</code> · <code>border: 1px solid rgba(255,255,255,0.10)</code> · <code>border-radius: 16px</code> · top accent border: <code>3px solid {module-colour}</code>
+      </p>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Cards — light surface</p>
+      <div class="canvas-light">
+        <div class="card-row">
+          <div class="card-light card-light-accent">
+            <p class="card-title-dark">Carrier Intelligence</p>
+            <p class="card-body-dark">A carrier-centric view designed to improve trading conversations and placement strategy.</p>
+          </div>
+          <div class="card-light" style="border-top:3px solid #059669">
+            <p class="card-title-dark">Claims Intelligence</p>
+            <p class="card-body-dark">Access claims performance data across clients, carriers, and geographies.</p>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        Light card: <code>background: white</code> · <code>border: 1px solid #dde3e8</code> · <code>box-shadow: 0 1px 4px rgba(0,0,0,0.06)</code>
+      </p>
+    </div>
+
+    <!-- Form elements -->
+    <div class="guide-group">
+      <p class="guide-group-label">Form Elements</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div class="canvas">
+          <p style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);margin-bottom:16px;text-transform:uppercase;letter-spacing:0.08em">Dark form</p>
+          <div class="form-demo">
+            <div class="form-group"><label class="form-label">Name</label><input class="form-input" placeholder="Your name" /></div>
+            <div class="form-group"><label class="form-label">Work email</label><input class="form-input" type="email" placeholder="you@aon.com" /></div>
+            <div class="form-group"><label class="form-label">Message</label><textarea class="form-input" rows="2" placeholder="What would you like to know?" style="resize:none"></textarea></div>
+            <button class="btn btn-primary" style="width:100%">Send message</button>
+          </div>
+        </div>
+        <div class="canvas-light">
+          <p style="font-size:11px;font-weight:600;color:var(--guide-sub);margin-bottom:16px;text-transform:uppercase;letter-spacing:0.08em">Light form</p>
+          <div class="form-demo">
+            <div class="form-group"><label class="form-label-light">Name</label><input class="form-input-light" placeholder="Your name" /></div>
+            <div class="form-group"><label class="form-label-light">Work email</label><input class="form-input-light" type="email" placeholder="you@aon.com" /></div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        Input focus ring: <code>border-color: #007585</code> · <code>box-shadow: 0 0 0 3px rgba(0,117,133,0.2)</code>
+      </p>
+    </div>
+
+    <!-- Status banners -->
+    <div class="guide-group">
+      <p class="guide-group-label">Status Banners</p>
+      <div class="canvas-light">
+        <div class="status-row">
+          <div class="status-banner status-success"><span class="status-icon">✓</span><div><strong>Success</strong>Your message has been sent. We'll be in touch shortly.</div></div>
+          <div class="status-banner status-warning"><span class="status-icon">⚠</span><div><strong>Warning</strong>Data coverage for this region is partial. Results may not reflect full portfolio.</div></div>
+          <div class="status-banner status-error"><span class="status-icon">✕</span><div><strong>Error</strong>Unable to load carrier data. Please try again or contact support.</div></div>
+          <div class="status-banner status-info"><span class="status-icon">ℹ</span><div><strong>Info</strong>This module is currently available in the US and EMEA only. Global rollout planned for Q3.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="guide-group">
+      <p class="guide-group-label">Navigation Bar</p>
+      <div class="nav-example">
+        <div class="nav-ex-inner">
+          <div class="nav-ex-brand">
+            <span class="nav-ex-name">Aon</span>
+            <span class="nav-ex-div"></span>
+            <span class="nav-ex-prod">CRS Global Analytics Hub</span>
+          </div>
+          <div class="nav-ex-tabs">
+            <button class="nav-ex-tab nav-ex-tab-active">Overview</button>
+            <button class="nav-ex-tab nav-ex-tab-inactive">Site Map</button>
+          </div>
+        </div>
+        <div class="stats-strip">
+          <div><p class="stat-val">50+</p><p class="stat-label">Countries covered</p></div>
+          <div><p class="stat-val">300K+</p><p class="stat-label">Client relationships</p></div>
+          <div><p class="stat-val">20+</p><p class="stat-label">Product lines</p></div>
+          <div><p class="stat-val">Connected</p><p class="stat-label">6–7 Data Assets</p></div>
+          <div><p class="stat-val">AI</p><p class="stat-label">Enabled</p></div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        Nav: height 56px · sticky · <code>z-index: 50</code> · active tab: <code>background: #007585</code> · inactive: <code>color: rgba(255,255,255,0.60)</code>
+      </p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════ 5. PATTERNS ══ -->
+  <section class="guide-section" id="patterns">
+    <div class="guide-section-head">
+      <div class="guide-section-num">05</div>
+      <div>
+        <h2>UI Patterns</h2>
+        <p>Reusable layout patterns for sections, detail panels, and module maps</p>
+      </div>
+    </div>
+
+    <!-- Hero pattern -->
+    <div class="guide-group">
+      <p class="guide-group-label">Hero Section</p>
+      <div class="hero-demo">
+        <div class="hero-glow-demo"></div>
+        <span class="badge badge-teal" style="display:inline-flex;margin-bottom:16px"><span class="badge-dot" style="background:var(--teal-light)"></span>Commercial Risk Solutions</span>
+        <h1>A Global Analytics Hub for<br><span style="color:var(--teal-light)">Portfolio, Client,</span><br><span style="color:rgba(255,255,255,0.75)">and Market Intelligence</span></h1>
+        <p>A single, consistent analytics workbench for all commercial risk colleagues to access global portfolio, carrier, client, market, and claims insights.</p>
+        <div style="display:flex;gap:12px;justify-content:center">
+          <a href="#" class="btn btn-primary">Explore Capabilities</a>
+          <a href="#" class="btn btn-secondary-dark">Get in Touch</a>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        Background: <code>linear-gradient(135deg, #0a1628, #0d2233, #1a1c2e)</code> · Glow: <code>radial-gradient rgba(0,117,133,0.08)</code> blurred orb top-right
+      </p>
+    </div>
+
+    <!-- Section heading pattern -->
+    <div class="guide-group">
+      <p class="guide-group-label">Section Heading</p>
+      <div class="canvas">
+        <div class="section-heading-demo">
+          <h2>Core 2026 Capabilities</h2>
+          <div class="section-rule"></div>
+          <p class="section-sub">The Hub is designed to be useful at every stage of the broking lifecycle</p>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        Rule: <code>width:48px · height:4px · background:#007585 · border-radius:2px</code> · Sub-text: /50 opacity · 13px
+      </p>
+    </div>
+
+    <!-- Workflow pattern -->
+    <div class="guide-group">
+      <p class="guide-group-label">Broking Workflow Steps</p>
+      <div style="margin-bottom:8px">
+        <div class="wf-row">
+          <div class="wf-step" style="background:#d5e8ea;color:#1a3340">
+            <p class="wf-num" style="color:#1a3340">1.</p>
+            <h3 class="wf-title" style="color:#1a3340">Renewal &amp; Market Context</h3>
+            <p class="wf-desc" style="color:#3a5560">What market are we walking into?</p>
+            <span class="wf-tag" style="color:#1a3340">Market Insights &amp; Trends</span>
+          </div>
+          <div class="wf-step" style="background:#29b0c3;color:#fff">
+            <p class="wf-num" style="color:rgba(255,255,255,0.65)">3.</p>
+            <h3 class="wf-title" style="color:#fff">Carrier Selection</h3>
+            <p class="wf-desc" style="color:rgba(255,255,255,0.75)">Who should we approach?</p>
+            <span class="wf-tag" style="color:#fff">Carrier Intelligence</span>
+          </div>
+          <div class="wf-step" style="background:#007585;color:#fff">
+            <p class="wf-num" style="color:rgba(255,255,255,0.65)">4.</p>
+            <h3 class="wf-title" style="color:#fff">Optimization &amp; Negotiation</h3>
+            <p class="wf-desc" style="color:rgba(255,255,255,0.75)">Where is leverage to improve terms?</p>
+            <span class="wf-tag" style="color:#fff">Claims Intelligence</span>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        5-column grid · <code>border-radius:16px · overflow:hidden</code> · tag pill: <code>background: rgba(255,255,255,0.18) · border: 1px solid rgba(255,255,255,0.25)</code>
+      </p>
+    </div>
+
+    <!-- Detail panel pattern -->
+    <div class="guide-group">
+      <p class="guide-group-label">Site Map Detail Panel</p>
+      <div class="canvas">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+          <div class="module-card" style="background:#007585;box-shadow:0 4px 20px rgba(0,117,133,0.4);padding:14px 20px">Aon Portfolio &amp;<br>Leadership Analytics</div>
+          <div class="module-child" style="border-left:3px solid #007585;width:160px">Overview</div>
+          <div class="module-child" style="border-left:3px solid #007585;width:160px">Sentiment</div>
+        </div>
+        <div class="detail-panel-demo">
+          <div class="detail-panel-header">
+            <h3>Portfolio &amp; Leadership Analytics</h3>
+            <button style="background:rgba(255,255,255,0.2);border:none;color:white;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-sans)">↗ Open</button>
+          </div>
+          <div class="detail-panel-body">
+            <div class="detail-col">
+              <p class="detail-col-label" style="color:#29b0c3">Description</p>
+              <p>A portfolio-wide lens on Aon's trading footprint — bringing premium distribution, growth and concentration into one consistent experience.</p>
+            </div>
+            <div class="detail-col">
+              <p class="detail-col-label" style="color:#fbbf24">Business Problem</p>
+              <p>Portfolio insight is fragmented across regional dashboards, legacy reports and ad-hoc extracts — forcing colleagues into manual consolidation.</p>
+            </div>
+            <div class="detail-col">
+              <p class="detail-col-label" style="color:#c084fc">Data Sources</p>
+              <p>Global | Aon Policy Data, Voice for the Client</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--guide-sub);margin-top:8px">
+        Panel header: module accent colour · 3-column body · column labels: teal / amber / purple · body text: <code>rgba(255,255,255,0.72)</code> · 12px
+      </p>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════ 6. USAGE GUIDELINES ══ -->
+  <section class="guide-section" id="usage">
+    <div class="guide-section-head">
+      <div class="guide-section-num">06</div>
+      <div>
+        <h2>Usage Guidelines</h2>
+        <p>Do's, don'ts, and notes for consistent implementation</p>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Colour Usage</p>
+      <div class="rule-box rule-do"><span class="rule-icon">✓</span><div><strong>Do</strong>Use navy (#0a1628 or #262836) as the primary page background for all dark-mode surfaces.</div></div>
+      <div class="rule-box rule-do"><span class="rule-icon">✓</span><div><strong>Do</strong>Use teal (#007585) only for interactive elements: primary buttons, active states, focus rings, and accent rules. Use teal-light (#29b0c3) for data callouts, stat values, and eyebrow text.</div></div>
+      <div class="rule-box rule-dont"><span class="rule-icon">✕</span><div><strong>Don't</strong>Use raw <code>rgba(255,255,255,0.04)</code> or any alpha below 0.07 for fills — these become invisible when exported via html2canvas to PPTX.</div></div>
+      <div class="rule-box rule-dont"><span class="rule-icon">✕</span><div><strong>Don't</strong>Introduce new brand colours outside the palette. Use module accent colours (teal family, violet, amber, red) for data differentiation only.</div></div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Typography</p>
+      <div class="rule-box rule-do"><span class="rule-icon">✓</span><div><strong>Do</strong>Use <code>font-weight: 800</code> and <code>letter-spacing: -0.03em</code> only for hero/display headings. Section headings use 700 / -0.02em.</div></div>
+      <div class="rule-box rule-do"><span class="rule-icon">✓</span><div><strong>Do</strong>Use Inter throughout. Body text: 14–15px, lh 1.65–1.75. Caption/metadata: 11–12px. Never go below 10px for rendered text.</div></div>
+      <div class="rule-box rule-dont"><span class="rule-icon">✕</span><div><strong>Don't</strong>Use positive letter-spacing on body copy. Reserve tracking (+0.05em to +0.12em) for eyebrow labels and uppercase utility text only.</div></div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Components</p>
+      <div class="rule-box rule-do"><span class="rule-icon">✓</span><div><strong>Do</strong>Use the teal top-border card pattern (<code>border-top: 3px solid {accent}</code>) to differentiate module cards. One accent per card.</div></div>
+      <div class="rule-box rule-do"><span class="rule-icon">✓</span><div><strong>Do</strong>Keep icon boxes at 40×40px with <code>border-radius: 10px</code> and <code>background: {accent}30</code> (18% opacity).</div></div>
+      <div class="rule-box rule-dont"><span class="rule-icon">✕</span><div><strong>Don't</strong>Use <code>border-radius: 999px</code> (pill shapes) for structural elements in PPT-export contexts — use sharp corners or low radii instead. Pills are safe in the live web app.</div></div>
+      <div class="rule-box rule-note"><span class="rule-icon">ℹ</span><div><strong>PPT Export</strong>All slide content must use inline styles (no Tailwind classes). Avoid <code>borderRadius:999</code>, <code>borderRadius:'50%'</code> on visible fills, negative <code>bottom</code> offsets inside overflow:hidden, and any opacity below 0.07.</div></div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Interaction &amp; Motion</p>
+      <div class="rule-box rule-do"><span class="rule-icon">✓</span><div><strong>Do</strong>Use <code>transition: all 0.15s</code> for hover colour changes and <code>transition: all 0.2s</code> for transform/scale states. Keep animations under 300ms.</div></div>
+      <div class="rule-box rule-do"><span class="rule-icon">✓</span><div><strong>Do</strong>Use <code>hover:scale-105</code> sparingly — only on interactive node cards in the site map. Cards use background opacity change on hover instead of transform.</div></div>
+      <div class="rule-box rule-dont"><span class="rule-icon">✕</span><div><strong>Don't</strong>Animate layout-affecting properties (width, height, padding). Animate <code>opacity</code>, <code>background</code>, <code>color</code>, <code>transform</code> only.</div></div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Module Colour Assignment</p>
+      <div style="background:white;border:1px solid var(--guide-rule);border-radius:var(--r-xl);overflow:hidden">
+        <table class="token-table">
+          <thead>
+            <tr><th>Module</th><th>Primary Accent</th><th>Sub-module / Secondary</th><th>Child node background (site map)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Aon Portfolio &amp; Leadership Analytics</td><td><span class="token-swatch" style="background:#007585"></span> <code>#007585</code></td><td>—</td><td>#eef6f7</td></tr>
+            <tr><td>Carrier Intelligence</td><td><span class="token-swatch" style="background:#29b0c3"></span> <code>#29b0c3</code></td><td>—</td><td>#e0f5f8</td></tr>
+            <tr><td>Client Intelligence</td><td><span class="token-swatch" style="background:#1496a8"></span> <code>#1496a8</code></td><td><span class="token-swatch" style="background:#4338ca"></span> <code>#4338ca</code></td><td>#e0f7f9</td></tr>
+            <tr><td>Market Insights &amp; Trends</td><td><span class="token-swatch" style="background:#0d8a9e"></span> <code>#0d8a9e</code></td><td><span class="token-swatch" style="background:#d97706"></span> <code>#d97706</code></td><td>#e0f6f8</td></tr>
+            <tr><td>Claims Intelligence</td><td><span class="token-swatch" style="background:#64748b"></span> <code>#64748b</code></td><td><span class="token-swatch" style="background:#059669"></span> <code>#059669</code></td><td>#f1f5f9</td></tr>
+            <tr><td>Peer Placement Comparison</td><td><span class="token-swatch" style="background:#4338ca"></span> <code>#4338ca</code></td><td>—</td><td>—</td></tr>
+            <tr><td>Risk Intelligence (GRMS)</td><td><span class="token-swatch" style="background:#dc2626"></span> <code>#dc2626</code></td><td>—</td><td>—</td></tr>
+            <tr><td>Emerging Risks</td><td><span class="token-swatch" style="background:#7c3aed"></span> <code>#7c3aed</code></td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="guide-group">
+      <p class="guide-group-label">Tailwind Class Reference (most used)</p>
+      <div style="background:white;border:1px solid var(--guide-rule);border-radius:var(--r-xl);overflow:hidden">
+        <table class="token-table">
+          <thead><tr><th>Purpose</th><th>Class(es)</th></tr></thead>
+          <tbody>
+            <tr><td>Page section padding</td><td><code>py-20 px-6</code></td></tr>
+            <tr><td>Max-width container</td><td><code>max-w-7xl mx-auto</code></td></tr>
+            <tr><td>Section heading</td><td><code>text-3xl font-bold text-white mb-3</code></td></tr>
+            <tr><td>Teal rule</td><td><code>w-12 h-1 bg-aon-teal rounded</code></td></tr>
+            <tr><td>Card (dark)</td><td><code>bg-white/5 border border-white/10 rounded-2xl p-6</code></td></tr>
+            <tr><td>Card hover</td><td><code>hover:bg-white/10 transition-all</code></td></tr>
+            <tr><td>Body text (dark)</td><td><code>text-white/60 text-sm leading-relaxed</code></td></tr>
+            <tr><td>Dim body text</td><td><code>text-white/50</code></td></tr>
+            <tr><td>Eyebrow label</td><td><code>text-xs font-bold tracking-widest uppercase text-aon-teal-light</code></td></tr>
+            <tr><td>Primary button</td><td><code>px-7 py-3.5 rounded-xl bg-aon-teal hover:bg-aon-teal-hover text-white font-semibold text-sm transition-all</code></td></tr>
+            <tr><td>Active nav tab</td><td><code>bg-aon-teal text-white</code></td></tr>
+            <tr><td>Inactive nav tab</td><td><code>text-white/60 hover:text-white hover:bg-white/10</code></td></tr>
+            <tr><td>Form input (dark)</td><td><code>bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-aon-teal/40 focus:border-aon-teal</code></td></tr>
+            <tr><td>Sticky nav</td><td><code>sticky top-0 z-50 bg-aon-navy shadow-md</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+</div><!-- /guide-body -->
+
+<footer style="background:#1a2430;color:rgba(255,255,255,0.35);text-align:center;padding:24px;font-size:12px">
+  <p>CRS Global Analytics Hub · Design System v1.0 · Internal use only · May 2026</p>
+</footer>
+
+</body>
+</html>
