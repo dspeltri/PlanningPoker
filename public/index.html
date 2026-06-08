@@ -318,6 +318,21 @@
       color:var(--text-muted);
       font-size:11px;margin-top:var(--sp-2);
     }
+    .backlog-card .card__story{
+      font-family:var(--font-mono);
+      color:var(--success);
+      font-size:12px;
+      font-weight:700;
+      margin-top:var(--sp-2);
+      padding:var(--sp-2) var(--sp-3);
+      background:var(--success-bg);
+      border-radius:var(--r-md);
+      text-align:center;
+      display:none;
+    }
+    .backlog-card .card__story.show{
+      display:block;
+    }
     .backlog-item-tile.current .backlog-card{
       border-color:var(--teal);
       background:linear-gradient(135deg,rgba(0,117,133,0.08),rgba(41,176,195,0.08));
@@ -648,13 +663,13 @@
     <div class="divider"></div>
     <div class="dialog-row">
       <label>Room code</label>
-      <div id="shareRoomCode" style="font-family:var(--font-mono);font-size:24px;font-weight:600;color:var(--teal);padding:var(--sp-4);border-radius:var(--r-md);border:1px dashed var(--teal-border);text-align:center;"></div>
+      <div id="shareRoomCode" style="font-family:var(--font-mono);font-size:24px;font-weight:600;color:var(--teal);padding:var(--sp-4);border-radius:var(--r-md);border:1px dashed var(--teal-border);text-align:center;user-select:all;cursor:pointer;"></div>
     </div>
     <div class="dialog-row">
       <label>Invite link</label>
       <div style="display:flex;gap:var(--sp-2);align-items:center;">
         <input id="shareUrlInput" type="text" readonly aria-label="Room invite link"
-               style="flex:1;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);border:1px solid var(--border-hi);background:var(--surface-alt);font-family:var(--font-mono);font-size:12px;color:var(--text);" />
+               style="flex:1;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);border:1px solid var(--border-hi);background:var(--surface-alt);font-family:var(--font-mono);font-size:12px;" />
         <button id="copyLinkBtn" type="button" class="action-button secondary">Copy</button>
       </div>
     </div>
@@ -671,7 +686,7 @@
 <script>
 "use strict";
 
-// ─── Constants ─────────────────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────────
 const STORAGE_KEY_PROFILE = "planningPokerProfile";
 const TOAST_DURATION_MS = 2800;
 const MAX_ITEMS_PER_BACKLOG = 200;
@@ -689,7 +704,7 @@ const SEAT_POSITIONING = {
   large: { width: 56, layerSize: 500, orbitRadius: 230, threshold: Infinity }
 };
 
-// ─── Structured Logger ─────────────────────────────────────────────────────
+// ─── Structured Logger ──────────────────────────────────────────────────────
 /**
  * Frontend logger for debugging and monitoring
  */
@@ -711,7 +726,7 @@ const logger = {
   }
 };
 
-// ─── DOM Helpers ───────────────────────────────────────────────────────────
+// ─── DOM Helpers ────────────────────────────────────────────────────────────
 /**
  * Get element by ID safely
  * @param {string} id - Element ID
@@ -730,7 +745,7 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-// ─── Room & Session Management ─────────────────────────────────────────────
+// ─── Room & Session Management ──────────────────────────────────────────────
 
 let socket = null;
 let ROOM_ID = null;
@@ -741,6 +756,9 @@ let currentState = { revealed: false, votes: {} };
 let myCurrentVote = null;
 let items = [];
 let currentItemIndex = -1;
+
+// Track voted values for each item (by index)
+let itemVotes = {};
 
 /**
  * Generate a random room ID
@@ -828,10 +846,39 @@ function parseVoteEntry(info) {
   return { value: String(info ?? "") };
 }
 
-// ─── Backlog Management ────────────────────────────────────────────────────
+// ─── Backlog Management ─────────────────────────────────────────────────────
 
 /**
- * Render backlog tiles
+ * Calculate average vote value (numeric only, ignoring non-numeric votes like "?")
+ * @returns {number|null} Average value or null if no numeric votes
+ */
+function calculateAverageVote() {
+  const votes = Object.values(currentState.votes || {});
+  const numericVotes = votes
+    .map(v => parseFloat(v.value))
+    .filter(v => !Number.isNaN(v));
+  
+  if (numericVotes.length === 0) return null;
+  const sum = numericVotes.reduce((a, b) => a + b, 0);
+  return (sum / numericVotes.length).toFixed(2);
+}
+
+/**
+ * Get the consensus or average vote value
+ * @returns {string} Vote value to display (average, or first non-numeric if all non-numeric)
+ */
+function getConsensusVote() {
+  const avg = calculateAverageVote();
+  if (avg !== null) return avg;
+  
+  // If no numeric votes, return first vote (likely "?")
+  const votes = Object.values(currentState.votes || {});
+  if (votes.length > 0) return votes[0].value;
+  return "";
+}
+
+/**
+ * Update backlog tiles with vote display on reveal
  */
 function updateBacklogTiles() {
   const backlogList = $("backlogList");
@@ -864,8 +911,20 @@ function updateBacklogTiles() {
     date.setAttribute("data-base", `Item ${idx + 1} of ${items.length}`);
     date.textContent = `Item ${idx + 1} of ${items.length}`;
 
+    const story = document.createElement("div");
+    story.className = "card__story";
+    story.setAttribute("role", "status");
+    story.setAttribute("aria-label", `Story points: ${itemVotes[idx] || ""}`);
+    story.textContent = itemVotes[idx] || "";
+    
+    // Show story number if this is the current item and votes are revealed
+    if (idx === currentItemIndex && currentState.revealed && itemVotes[idx]) {
+      story.classList.add("show");
+    }
+
     card.appendChild(title);
     card.appendChild(date);
+    card.appendChild(story);
 
     const activate = () => goToItem(idx);
     card.addEventListener("click", activate);
@@ -881,6 +940,21 @@ function updateBacklogTiles() {
   if (itemIndexLabel) {
     itemIndexLabel.textContent = currentItemIndex >= 0 ? `${currentItemIndex + 1}/${items.length}` : "";
   }
+}
+
+/**
+ * Update story number display on backlog cards
+ */
+function updateStoryNumberDisplay() {
+  const cards = document.querySelectorAll(".backlog-card .card__story");
+  cards.forEach((storyEl, idx) => {
+    if (idx === currentItemIndex && currentState.revealed) {
+      storyEl.textContent = itemVotes[idx] || "";
+      storyEl.classList.add("show");
+    } else {
+      storyEl.classList.remove("show");
+    }
+  });
 }
 
 /**
@@ -928,7 +1002,7 @@ function goToItem(idx) {
   if (nextBtn) nextBtn.addEventListener("click", () => goToItem(currentItemIndex + 1));
 }
 
-// ─── Voting Cards ──────────────────────────────────────────────────────────
+// ─── Voting Cards ───────────────────────────────────────────────────────────
 
 /**
  * Render voting cards
@@ -973,7 +1047,7 @@ function syncCardState() {
   });
 }
 
-// ─── Seating & Participants ────────────────────────────────────────────────
+// ─── Seating & Participants ─────────────────────────────────────────────────
 
 /**
  * Get seat positioning config based on participant count
@@ -999,540 +1073,300 @@ function renderSeats() {
 
   entries.sort(([a], [b]) => a.localeCompare(b));
   const config = getSeatConfig(entries.length);
+  seatsLayer.style.width = `${config.layerSize}px`;
+  seatsLayer.style.height = `${config.layerSize}px`;
 
-  seatsLayer.style.width = config.layerSize + "px";
-  seatsLayer.style.height = config.layerSize + "px";
+  const angleStep = (2 * Math.PI) / entries.length;
+  entries.forEach(([name, info], idx) => {
+    const angle = angleStep * idx - Math.PI / 2;
+    const x = config.orbitRadius * Math.cos(angle);
+    const y = config.orbitRadius * Math.sin(angle);
 
-  const cx = config.layerSize / 2;
-  const cy = config.layerSize / 2;
-  const frag = document.createDocumentFragment();
-
-  entries.forEach(([name, info], i) => {
-    const { value } = parseVoteEntry(info);
-    const angle = (2 * Math.PI * i) / entries.length - Math.PI / 2;
     const seat = document.createElement("div");
     seat.className = "seat";
-    seat.style.setProperty("--seat-width", config.width + "px");
-    seat.style.left = (cx + config.orbitRadius * Math.cos(angle)) + "px";
-    seat.style.top = (cy + config.orbitRadius * Math.sin(angle)) + "px";
+    seat.style.left = `calc(50% + ${x}px)`;
+    seat.style.top = `calc(50% + ${y}px)`;
 
-    const hasVoted = Boolean(value);
-    let valueClass = "seat-value";
-    let valueText;
-
-    if (!currentState.revealed) {
-      valueClass += hasVoted ? " voted-hidden" : " hidden";
-      valueText = hasVoted ? "●" : "–";
-    } else {
-      valueText = value || "–";
-    }
+    const card = document.createElement("div");
+    card.className = "seat-card";
+    card.style.setProperty("--seat-width", `${config.width}px`);
 
     const nameEl = document.createElement("div");
     nameEl.className = "seat-name";
     nameEl.textContent = name;
+    nameEl.setAttribute("title", name);
 
+    const voteEntry = parseVoteEntry(info);
+    const voteValue = voteEntry.value;
     const valueEl = document.createElement("div");
-    valueEl.className = valueClass;
-    valueEl.textContent = valueText;
+    valueEl.className = "seat-value";
 
-    const card = document.createElement("div");
-    card.className = "seat-card";
-    card.appendChild(nameEl);
-    card.appendChild(valueEl);
-
-    seat.appendChild(card);
-    frag.appendChild(seat);
-  });
-
-  seatsLayer.appendChild(frag);
-}
-
-/**
- * Render participants list
- */
-function renderParticipantsTiles() {
-  const participantsList = $("participantsList");
-  if (!participantsList) return;
-
-  participantsList.innerHTML = "";
-  const entries = Object.entries(currentState.votes || {});
-  entries.sort(([a], [b]) => a.localeCompare(b));
-
-  if (!entries.length) {
-    participantsList.innerHTML = "<div style='font-size:11px;color:var(--text-muted);font-family:var(--font-mono);'>No participants yet.</div>";
-    return;
-  }
-
-  const frag = document.createDocumentFragment();
-  entries.forEach(([name, info]) => {
-    const { value } = parseVoteEntry(info);
-    let valText, valColor;
-
-    if (!currentState.revealed) {
-      valText = value ? "Voted ✓" : "Waiting…";
-      valColor = value ? "var(--success)" : "var(--text-muted)";
+    if (currentState.revealed) {
+      valueEl.textContent = voteValue || "—";
+    } else if (voteValue) {
+      valueEl.classList.add("voted-hidden");
+      valueEl.textContent = "✓";
     } else {
-      valText = value || "–";
-      valColor = "var(--text)";
+      valueEl.classList.add("hidden");
+      valueEl.textContent = "—";
     }
 
-    const tile = document.createElement("div");
-    tile.className = "participant-tile";
-
-    const nameSpan = document.createElement("span");
-    nameSpan.className = "participant-name";
-    nameSpan.textContent = name;
-
-    const valSpan = document.createElement("span");
-    valSpan.className = "participant-val";
-    valSpan.style.color = valColor;
-    valSpan.textContent = valText;
-
-    tile.appendChild(nameSpan);
-    tile.appendChild(valSpan);
-    frag.appendChild(tile);
+    card.appendChild(nameEl);
+    card.appendChild(valueEl);
+    seat.appendChild(card);
+    seatsLayer.appendChild(seat);
   });
-
-  participantsList.appendChild(frag);
 }
 
-// ─── Summary & Statistics ──────────────────────────────────────────────────
+// ─── Summary & Calculation ──────────────────────────────────────────────────
 
 /**
- * Update voting summary and table average
+ * Calculate and display vote summary
  */
-function updateStatusAndSummary() {
-  const entries = Object.entries(currentState.votes || {});
-  const total = entries.length;
-  const votedCount = entries.filter(([, i]) => Boolean(parseVoteEntry(i).value)).length;
+function updateSummary() {
+  const summaryEl = $("summaryText");
+  const tableAvgEl = $("tableAverage");
+  if (!summaryEl || !tableAvgEl) return;
 
-  const statusText = $("statusText");
-  const summaryText = $("summaryText");
-  const tableAverage = $("tableAverage");
-  const revealBtn = $("revealBtn");
-
-  if (!statusText) return;
-
-  if (!currentState.revealed) {
-    statusText.textContent = total ? `${votedCount} / ${total} voted` : "Pick a card to vote.";
-    if (summaryText) summaryText.textContent = "";
-    if (tableAverage) tableAverage.textContent = "";
-    if (revealBtn) revealBtn.disabled = total === 0;
+  const votes = Object.values(currentState.votes || {});
+  if (!votes.length || !currentState.revealed) {
+    summaryEl.textContent = "";
+    tableAvgEl.textContent = "—";
     return;
   }
 
-  statusText.textContent = `Revealed — ${total} player${total !== 1 ? "s" : ""}`;
+  const numericVotes = votes
+    .map(v => parseFloat(v.value))
+    .filter(v => !Number.isNaN(v));
 
-  const nums = entries
-    .map(([, i]) => parseFloat(parseVoteEntry(i).value))
-    .filter(n => Number.isFinite(n));
-
-  if (nums.length) {
-    const min = Math.min(...nums);
-    const max = Math.max(...nums);
-    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
-    const avgText = avg.toFixed(2);
-
-    if (summaryText) summaryText.textContent = `Min ${min} · Max ${max} · Avg ${avgText}`;
-    if (tableAverage) tableAverage.textContent = avgText;
-
-    logger.info("Vote summary", { min, max, avg: avgText, total: nums.length });
-  } else {
-    if (summaryText) summaryText.textContent = "No numeric votes.";
-    if (tableAverage) tableAverage.textContent = "";
+  if (!numericVotes.length) {
+    summaryEl.textContent = "No numeric votes";
+    tableAvgEl.textContent = "—";
+    return;
   }
+
+  const sum = numericVotes.reduce((a, b) => a + b, 0);
+  const avg = (sum / numericVotes.length).toFixed(2);
+  tableAvgEl.textContent = avg;
+  summaryEl.textContent = `${votes.length} vote${votes.length !== 1 ? "s" : ""} • Avg: ${avg}`;
+  
+  // Store the vote for the current item
+  if (currentItemIndex >= 0) {
+    itemVotes[currentItemIndex] = avg;
+    updateStoryNumberDisplay();
+  }
+}
+
+// ─── State Update Handler ───────────────────────────────────────────────────
+
+/**
+ * Handle state updates from server
+ */
+function onStateUpdate(state) {
+  currentState = state;
+  renderSeats();
+  syncCardState();
+  updateSummary();
+  updateBacklogTiles();
 }
 
 /**
- * Re-render all UI elements
+ * Handle backlog updates from server
  */
-function renderAll() {
-  try {
-    syncCardState();
-    renderSeats();
-    renderParticipantsTiles();
-    updateStatusAndSummary();
-  } catch (err) {
-    logger.error("Failed to render UI", err);
-  }
+function onBacklogUpdate(backlog) {
+  items = backlog.items || [];
+  currentItemIndex = backlog.currentIndex ?? -1;
+  itemVotes = {};
+  updateBacklogTiles();
 }
-
-// ─── Voting Actions ────────────────────────────────────────────────────────
 
 /**
  * Handle vote submission
- * @param {string} value - Vote value
  */
 function handleVote(value) {
   if (currentState.revealed) return;
   myCurrentVote = value;
-  syncCardState();
   socket?.emit("vote", value);
-  logger.debug("Vote submitted", { value });
+  syncCardState();
 }
 
-// Setup action buttons
-{
-  const revealBtn = $("revealBtn");
-  if (revealBtn) {
-    revealBtn.addEventListener("click", () => {
-      socket?.emit("reveal");
-      logger.info("Reveal requested");
-    });
-  }
-
-  const resetBtn = $("resetBtn");
-  if (resetBtn) {
-    resetBtn.addEventListener("click", () => {
-      myCurrentVote = null;
-      syncCardState();
-      socket?.emit("reset");
-      logger.info("Reset requested");
-    });
-  }
-}
-
-// ─── Socket Management ─────────────────────────────────────────────────────
+// ─── Socket.IO Connections ──────────────────────────────────────────────────
 
 /**
- * Join a room via socket
+ * Initialize Socket.IO connection
  */
-function joinRoom() {
-  if (!socket || !ROOM_ID || !myName) {
-    logger.warn("Cannot join room", { hasSocket: !!socket, hasRoom: !!ROOM_ID, hasName: !!myName });
+function initSocket() {
+  socket = io();
+
+  socket.on("connect", () => {
+    logger.info("Connected to server");
+    $("statusText").textContent = "Connected";
+    
+    if (ROOM_ID && hasJoined) {
+      socket.emit("joinRoom", {
+        roomId: ROOM_ID,
+        name: myName,
+        avatar: loadProfile()?.avatar || "/avatars/avatar1.jpg"
+      });
+    }
+  });
+
+  socket.on("disconnect", () => {
+    logger.warn("Disconnected from server");
+    $("statusText").textContent = "Disconnected";
+  });
+
+  socket.on("stateUpdate", onStateUpdate);
+  socket.on("backlogUpdate", onBacklogUpdate);
+
+  socket.on("error", (msg) => {
+    logger.error("Socket error", msg);
+    showToast(msg);
+  });
+
+  socket.on("serverShutdown", (msg) => {
+    logger.warn("Server shutdown", { msg });
+    showToast(msg);
+  });
+}
+
+// ─── Dialog Handlers ────────────────────────────────────────────────────────
+
+/**
+ * Show or hide an overlay
+ */
+function toggleOverlay(overlayId, show) {
+  const overlay = $(overlayId);
+  if (!overlay) return;
+  if (show) {
+    overlay.classList.remove("hidden");
+  } else {
+    overlay.classList.add("hidden");
+  }
+}
+
+/**
+ * Join a room
+ */
+function joinRoom(roomId, name, avatar) {
+  if (!socket || !roomId || !name) {
+    showToast("Invalid room or name");
     return;
   }
-  socket.emit("joinRoom", { roomId: ROOM_ID, name: myName });
-  logger.info("Joining room", { roomId: ROOM_ID, name: myName });
+  ROOM_ID = roomId;
+  myName = name;
+  hasJoined = true;
+  saveProfile(name);
+  updateRoomDisplay();
+  setRoomInUrl(ROOM_ID);
+  
+  const nameInput = $("nameInput");
+  if (nameInput) nameInput.value = myName;
+  
+  socket.emit("joinRoom", { roomId, name, avatar: avatar || "/avatars/avatar1.jpg" });
+  toggleOverlay("choiceOverlay", false);
 }
 
-/**
- * Initialize socket connection
- */
-function connectSocket() {
-  try {
-    socket = io({
-      reconnectionDelay: RECONNECTION_DELAY_MS,
-      reconnectionDelayMax: RECONNECTION_DELAY_MAX_MS
-    });
-
-    socket.on("connect", () => {
-      logger.info("Socket connected");
-      const statusText = $("statusText");
-      if (statusText) statusText.textContent = "Connected.";
-      if (ROOM_ID && myName) joinRoom();
-    });
-
-    socket.on("disconnect", (reason) => {
-      logger.warn("Socket disconnected", { reason });
-      const statusText = $("statusText");
-      if (statusText) statusText.textContent = `Disconnected (${reason}). Reconnecting…`;
-    });
-
-    socket.on("stateUpdate", (state) => {
-      try {
-        currentState = state ?? { revealed: false, votes: {} };
-        const myVote = currentState.votes[myName];
-        if (!myVote || !parseVoteEntry(myVote).value) myCurrentVote = null;
-        renderAll();
-      } catch (err) {
-        logger.error("Failed to process stateUpdate", err);
-      }
-    });
-
-    socket.on("backlogUpdate", (data) => {
-      try {
-        const { items: newItems, currentIndex } = data || {};
-        items = Array.isArray(newItems) ? newItems : [];
-        currentItemIndex = typeof currentIndex === "number" ? currentIndex : -1;
-        updateBacklogTiles();
-      } catch (err) {
-        logger.error("Failed to process backlogUpdate", err);
-      }
-    });
-
-    socket.on("error", (error) => {
-      logger.error("Socket error", error);
-      showToast(`Error: ${error}`);
-    });
-
-    socket.on("serverShutdown", (msg) => {
-      logger.warn("Server shutting down", { message: msg });
-      showToast(msg);
-    });
-  } catch (err) {
-    logger.error("Failed to initialize socket", err);
-    showToast("Connection failed");
-  }
-}
-
-// ─── Dialog & Overlay Management ────────────────────────────────────────────
-
-/**
- * Show choice screen overlay
- */
-function showChoiceScreen() {
-  [$("choiceOverlay"), $("createOverlay"), $("joinOverlay"), $("shareOverlay")].forEach(el => {
-    if (!el) return;
-    if (el.id === "choiceOverlay") el.classList.remove("hidden");
-    else el.classList.add("hidden");
-  });
-}
-
-/**
- * Hide all overlays
- */
-function hideAllOverlays() {
-  [$("choiceOverlay"), $("createOverlay"), $("joinOverlay"), $("shareOverlay")].forEach(el => {
-    if (el) el.classList.add("hidden");
-  });
-}
-
-// Setup dialog buttons
+// Setup dialog event listeners
 {
-  const createBtn = $("choiceCreate");
-  if (createBtn) {
-    createBtn.addEventListener("click", () => {
-      const createOverlay = $("createOverlay");
-      const choiceOverlay = $("choiceOverlay");
-      const createInput = $("createNameInput");
-      if (createOverlay) createOverlay.classList.remove("hidden");
-      if (choiceOverlay) choiceOverlay.classList.add("hidden");
-      if (createInput) createInput.focus();
-    });
-  }
-
-  const joinBtn = $("choiceJoin");
-  if (joinBtn) {
-    joinBtn.addEventListener("click", () => {
-      const joinOverlay = $("joinOverlay");
-      const choiceOverlay = $("choiceOverlay");
-      const joinInput = $("joinRoomInput");
-      if (joinOverlay) joinOverlay.classList.remove("hidden");
-      if (choiceOverlay) choiceOverlay.classList.add("hidden");
-      if (joinInput) joinInput.focus();
-    });
-  }
+  const choiceCreateBtn = $("choiceCreate");
+  const choiceJoinBtn = $("choiceJoin");
+  if (choiceCreateBtn) choiceCreateBtn.addEventListener("click", () => toggleOverlay("createOverlay", true));
+  if (choiceJoinBtn) choiceJoinBtn.addEventListener("click", () => toggleOverlay("joinOverlay", true));
 
   const createBackBtn = $("createBackBtn");
-  if (createBackBtn) {
-    createBackBtn.addEventListener("click", () => {
-      const createOverlay = $("createOverlay");
-      if (createOverlay) createOverlay.classList.add("hidden");
-      showChoiceScreen();
+  const createConfirmBtn = $("createConfirmBtn");
+  if (createBackBtn) createBackBtn.addEventListener("click", () => toggleOverlay("createOverlay", false));
+  if (createConfirmBtn) {
+    createConfirmBtn.addEventListener("click", () => {
+      const nameInput = $("createNameInput");
+      if (!nameInput || !nameInput.value.trim()) {
+        $("createNameError").textContent = "Name is required.";
+        return;
+      }
+      joinRoom(generateRoomId(), nameInput.value.trim());
     });
   }
 
   const joinBackBtn = $("joinBackBtn");
-  if (joinBackBtn) {
-    joinBackBtn.addEventListener("click", () => {
-      const joinOverlay = $("joinOverlay");
-      if (joinOverlay) joinOverlay.classList.add("hidden");
-      showChoiceScreen();
+  const joinConfirmBtn = $("joinConfirmBtn");
+  if (joinBackBtn) joinBackBtn.addEventListener("click", () => toggleOverlay("joinOverlay", false));
+  if (joinConfirmBtn) {
+    joinConfirmBtn.addEventListener("click", () => {
+      const roomInput = $("joinRoomInput");
+      const nameInput = $("joinNameInput");
+      if (!roomInput || !roomInput.value.trim()) {
+        $("joinRoomError").textContent = "Room code is required.";
+        return;
+      }
+      if (!nameInput || !nameInput.value.trim()) {
+        $("joinNameError").textContent = "Name is required.";
+        return;
+      }
+      joinRoom(roomInput.value.trim(), nameInput.value.trim());
     });
   }
+
+  const revealBtn = $("revealBtn");
+  const resetBtn = $("resetBtn");
+  if (revealBtn) revealBtn.addEventListener("click", () => socket?.emit("reveal"));
+  if (resetBtn) resetBtn.addEventListener("click", () => socket?.emit("reset"));
 }
 
-// ─── Create Room Flow ──────────────────────────────────────────────────────
-
+// Setup share dialog
 {
-  const confirmBtn = $("createConfirmBtn");
-  if (confirmBtn) {
-    confirmBtn.addEventListener("click", () => {
-      try {
-        const input = $("createNameInput");
-        const errorEl = $("createNameError");
-        if (!input) return;
+  const shareBtnHeader = $("shareBtnHeader");
+  const shareCloseBtn = $("shareCloseBtn");
+  const copyLinkBtn = $("copyLinkBtn");
+  const shareRoomCode = $("shareRoomCode");
+  const shareUrlInput = $("shareUrlInput");
 
-        const raw = input.value.trim();
-        if (!raw) {
-          if (errorEl) errorEl.textContent = "Please enter your name.";
-          input.classList.add("error");
-          input.focus();
-          return;
-        }
-
-        if (errorEl) errorEl.textContent = "";
-        input.classList.remove("error");
-
-        ROOM_ID = generateRoomId();
-        myName = raw.slice(0, MAX_NAME_LENGTH);
-        saveProfile(myName);
-        setRoomInUrl(ROOM_ID);
-        updateRoomDisplay();
-        hideAllOverlays();
-        renderCards();
-        joinRoom();
-
-        logger.info("Room created", { roomId: ROOM_ID, name: myName });
-      } catch (err) {
-        logger.error("Failed to create room", err);
-        showToast("Failed to create room");
+  if (shareBtnHeader) {
+    shareBtnHeader.addEventListener("click", () => {
+      if (shareRoomCode) shareRoomCode.textContent = ROOM_ID ? ROOM_ID.toUpperCase() : "";
+      if (shareUrlInput) shareUrlInput.value = ROOM_ID ? `${window.location.origin}#${ROOM_ID}` : "";
+      toggleOverlay("shareOverlay", true);
+    });
+  }
+  if (shareCloseBtn) shareCloseBtn.addEventListener("click", () => toggleOverlay("shareOverlay", false));
+  if (copyLinkBtn) {
+    copyLinkBtn.addEventListener("click", () => {
+      if (shareUrlInput) {
+        shareUrlInput.select();
+        document.execCommand("copy");
+        showToast("Link copied!");
       }
     });
   }
 }
 
-// ─── Join Room Flow ────────────────────────────────────────────────────────
+// ─── Initialization ─────────────────────────────────────────────────────────
 
-{
-  const confirmBtn = $("joinConfirmBtn");
-  if (confirmBtn) {
-    confirmBtn.addEventListener("click", () => {
-      try {
-        const roomInput = $("joinRoomInput");
-        const nameInput = $("joinNameInput");
-        const roomError = $("joinRoomError");
-        const nameError = $("joinNameError");
+document.addEventListener("DOMContentLoaded", () => {
+  logger.info("DOM loaded, initializing");
+  renderCards();
+  initSocket();
 
-        let hasError = false;
-
-        if (!roomInput || !roomInput.value.trim()) {
-          if (roomError) roomError.textContent = "Please enter a room code.";
-          if (roomInput) {
-            roomInput.classList.add("error");
-            roomInput.focus();
-          }
-          hasError = true;
-        } else if (roomError) {
-          roomError.textContent = "";
-          if (roomInput) roomInput.classList.remove("error");
-        }
-
-        if (!nameInput || !nameInput.value.trim()) {
-          if (nameError) nameError.textContent = "Please enter your name.";
-          if (nameInput) nameInput.classList.add("error");
-          hasError = true;
-        } else if (nameError) {
-          nameError.textContent = "";
-          if (nameInput) nameInput.classList.remove("error");
-        }
-
-        if (hasError) return;
-
-        ROOM_ID = roomInput.value.trim().toLowerCase();
-        myName = nameInput.value.trim().slice(0, MAX_NAME_LENGTH);
-        saveProfile(myName);
-        setRoomInUrl(ROOM_ID);
-        updateRoomDisplay();
-        hideAllOverlays();
-        renderCards();
-        joinRoom();
-
-        logger.info("Joined room", { roomId: ROOM_ID, name: myName });
-      } catch (err) {
-        logger.error("Failed to join room", err);
-        showToast("Failed to join room");
-      }
-    });
-  }
-}
-
-// ─── Share Modal ────────────────────────────────────────────────────────────
-
-{
-  const shareBtn = $("shareBtnHeader");
-  if (shareBtn) {
-    shareBtn.addEventListener("click", () => {
-      try {
-        const shareOverlay = $("shareOverlay");
-        const shareCode = $("shareRoomCode");
-        const shareUrl = $("shareUrlInput");
-
-        if (!ROOM_ID) {
-          showToast("No room selected.");
-          return;
-        }
-
-        if (shareCode) shareCode.textContent = ROOM_ID.toUpperCase();
-        if (shareUrl) shareUrl.value = window.location.href;
-        if (shareOverlay) shareOverlay.classList.remove("hidden");
-
-        logger.info("Share modal opened", { roomId: ROOM_ID });
-      } catch (err) {
-        logger.error("Failed to open share modal", err);
-      }
-    });
+  const profile = loadProfile();
+  if (profile && profile.name) {
+    const nameInput = $("nameInput");
+    if (nameInput) nameInput.value = profile.name;
   }
 
-  const copyBtn = $("copyLinkBtn");
-  if (copyBtn) {
-    copyBtn.addEventListener("click", async () => {
-      try {
-        const shareUrl = $("shareUrlInput");
-        if (!shareUrl || !shareUrl.value) return;
-
-        await navigator.clipboard.writeText(shareUrl.value);
-        showToast("Room link copied!");
-        logger.info("Room link copied to clipboard");
-      } catch (err) {
-        logger.error("Failed to copy link", err);
-        showToast("Failed to copy link");
-      }
-    });
-  }
-
-  const closeBtn = $("shareCloseBtn");
-  if (closeBtn) {
-    closeBtn.addEventListener("click", () => {
-      const shareOverlay = $("shareOverlay");
-      if (shareOverlay) shareOverlay.classList.add("hidden");
-    });
-  }
-}
-
-// ─── App Initialization ────────────────────────────────────────────────────
-
-window.addEventListener("DOMContentLoaded", () => {
-  try {
-    logger.info("App initializing");
-
-    // Check if room ID is in URL hash
-    const hashRoom = window.location.hash.slice(1);
-    if (hashRoom) {
-      ROOM_ID = hashRoom;
-      updateRoomDisplay();
-
-      // Load saved profile or show name input
-      const profile = loadProfile();
-      if (profile && profile.name) {
-        myName = profile.name;
-        const nameInput = $("nameInput");
-        if (nameInput) nameInput.value = myName;
-        connectSocket();
-        hideAllOverlays();
-        renderCards();
-      } else {
-        // Show join dialog
-        showChoiceScreen();
-        const joinOverlay = $("joinOverlay");
-        const roomInput = $("joinRoomInput");
-        if (joinOverlay) joinOverlay.classList.remove("hidden");
-        if ($("choiceOverlay")) $("choiceOverlay").classList.add("hidden");
-        if (roomInput) {
-          roomInput.value = ROOM_ID;
-          roomInput.disabled = true;
-          const nameInput = $("joinNameInput");
-          if (nameInput) nameInput.focus();
-        }
-      }
+  const urlHash = window.location.hash.slice(1);
+  if (urlHash) {
+    ROOM_ID = urlHash;
+    const profile = loadProfile();
+    if (profile && profile.name) {
+      setTimeout(() => joinRoom(ROOM_ID, profile.name), 500);
     } else {
-      // Show choice screen
-      showChoiceScreen();
-      connectSocket();
+      toggleOverlay("joinOverlay", true);
+      const joinRoomInput = $("joinRoomInput");
+      if (joinRoomInput) joinRoomInput.value = ROOM_ID;
     }
-
-    renderCards();
-    logger.info("App initialized");
-  } catch (err) {
-    logger.error("Failed to initialize app", err);
-    showToast("Failed to initialize app");
+  } else {
+    toggleOverlay("choiceOverlay", true);
   }
-});
-
-// Handle unload
-window.addEventListener("beforeunload", () => {
-  if (socket) socket.disconnect();
 });
 </script>
 </body>
